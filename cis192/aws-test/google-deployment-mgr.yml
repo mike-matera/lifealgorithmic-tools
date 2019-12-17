@@ -1,0 +1,168 @@
+# Copyright 2016 Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+resources:
+
+# Create the external subnet:
+
+- name: cis192-external
+  type: compute.v1.network
+  properties:
+    description: External network for the CIS-192 project.
+    autoCreateSubnetworks: false
+    routingConfig:
+      routingMode: REGIONAL
+
+- name: external-subnet
+  type: compute.v1.subnetwork
+  properties:
+    description: The external facing subnet.
+    ipCidrRange: 10.192.1.0/24
+    network: $(ref.cis192-external.selfLink)
+    region: us-west1
+  metadata:
+    dependsOn:
+      - cis192-external
+
+# External subnet firewall
+
+- name: allow-external-ssh
+  type: compute.v1.firewall
+  properties:
+    description: Allow SSH to the external interface of the router from anywhere.
+    network: $(ref.cis192-external.selfLink)
+    priority: 1
+    sourceRanges:
+      - 0.0.0.0/0
+    direction: INGRESS
+    allowed:
+      - IPProtocol: tcp
+        ports:
+          - 22
+  metadata:
+    dependsOn:
+      - cis192-external
+
+# Internal network.
+
+- name: cis192-internal
+  type: compute.v1.network
+  properties:
+    description: Internal network for the CIS-192 project.
+    autoCreateSubnetworks: false
+    routingConfig:
+      routingMode: REGIONAL
+
+- name: internal-subnet
+  type: compute.v1.subnetwork
+  properties:
+    description: The internal facing subnet.
+    ipCidrRange: 10.192.2.0/24
+    network: $(ref.cis192-internal.selfLink)
+    region: us-west1
+  metadata:
+    dependsOn:
+      - cis192-internal
+
+# Internal subnet firewall
+
+- name: allow-internal-internal
+  type: compute.v1.firewall
+  properties:
+    description: Allow internal hosts to communicate with each other.
+    network: $(ref.cis192-internal.selfLink)
+    priority: 1
+    sourceRanges:
+     - $(ref.internal-subnet.ipCidrRange)
+    direction: INGRESS
+    allowed:
+      - IPProtocol: all
+  metadata:
+    dependsOn:
+      - cis192-internal
+      - internal-subnet
+
+- name: allow-internal-ssh
+  type: compute.v1.firewall
+  properties:
+    description: Allow SSH to the internal hosts from anywhere.
+    network: $(ref.cis192-internal.selfLink)
+    priority: 1
+    sourceRanges:
+      - 0.0.0.0/0
+    direction: INGRESS
+    allowed:
+      - IPProtocol: tcp
+        ports:
+          - 22
+  metadata:
+    dependsOn:
+      - cis192-internal
+
+# VM Instances
+
+- name: router
+  type: compute.v1.instance
+  properties:
+    machineType: zones/us-west1-b/machineTypes/f1-micro
+    region: us-west1
+    zone: us-west1-b
+    disks:
+    - deviceName: boot
+      type: PERSISTENT
+      boot: true
+      autoDelete: true
+      initializeParams:
+        sourceImage: projects/debian-cloud/global/images/family/debian-9
+    networkInterfaces:
+    - name: eth0
+      network: $(ref.cis192-external.selfLink)
+      subnetwork: $(ref.external-subnet.selfLink)
+      networkIP: 10.192.1.100
+      accessConfigs:
+      - name: External NAT
+        type: ONE_TO_ONE_NAT
+    - name: eth1
+      network: $(ref.cis192-internal.selfLink)
+      subnetwork: $(ref.internal-subnet.selfLink)
+      networkIP: 10.192.2.100
+  metadata:
+    dependsOn:
+      - cis192-internal
+      - internal-subnet
+      - cis192-external
+      - external-subnet
+
+- name: server
+  type: compute.v1.instance
+  properties:
+    machineType: zones/us-west1-b/machineTypes/f1-micro
+    region: us-west1
+    zone: us-west1-b
+    disks:
+    - deviceName: boot
+      type: PERSISTENT
+      boot: true
+      autoDelete: true
+      initializeParams:
+        sourceImage: projects/debian-cloud/global/images/family/debian-9
+    networkInterfaces:
+    - name: eth1
+      network: $(ref.cis192-internal.selfLink)
+      subnetwork: $(ref.internal-subnet.selfLink)
+      networkIP: 10.192.2.101
+  metadata:
+    dependsOn:
+      - cis192-internal
+      - internal-subnet

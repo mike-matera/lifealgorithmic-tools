@@ -1,0 +1,66 @@
+#! /usr/bin/env python3
+
+import time
+import hashlib
+import argparse
+
+parser = argparse.ArgumentParser(
+    description="Decode confirmation numbers.",
+)
+parser.add_argument('--compat', action='store_true', help='Allow pre-checksum confirmation numbers.')
+parser.add_argument('secret', nargs=1, help='The embedded secret.')
+args = parser.parse_args()
+
+
+def encode(score):
+    secret = args.secret[0]
+    secret_hash = hashlib.sha256()
+    secret_hash.update(secret.encode('utf-8'))
+    key = int.from_bytes(secret_hash.digest(), byteorder='little') & 0xffffffffffffffff
+    b = bytearray(int(time.time()).to_bytes(8, byteorder='little'))
+    b[4] = score & 0xff
+    for bb in b[0:7]:
+        b[7] = b[7] ^ bb
+    cfm = int.from_bytes(b, byteorder='big') ^ key
+    return cfm
+
+
+def decode(cfm):
+    secret = args.secret[0]
+    secret_hash = hashlib.sha256()
+    secret_hash.update(secret.encode('utf-8'))
+    key = int.from_bytes(secret_hash.digest(), byteorder='little') & 0xffffffffffffffff
+
+    b = (cfm ^ key).to_bytes(length=8, byteorder='big')
+    date = time.localtime(int.from_bytes(b[0:4], byteorder='little'))
+    score = b[4]
+
+    if b[7] == 0:
+        valid = args.compat
+    else:
+        chksum = 0
+        for bb in b:
+            chksum = chksum ^ bb
+        valid = chksum == 0
+
+    return date, score, valid
+
+
+def main():
+
+    print('\n\nInput confirmation numbers:\n')
+    while True:
+        try:
+            date, score, valid = decode(int(input('> ')))
+            if not valid:
+                print('Error: Invalid confirmation code. (do you need --compat)')
+            else:
+                pretty_date = time.strftime('%A, %B %d, %Y - %I:%M %p', date)
+                print('Score:', score, 'Date:', pretty_date)
+
+        except Exception as e:
+            print('Error:', e)
+
+
+if __name__ == '__main__' :
+    main()

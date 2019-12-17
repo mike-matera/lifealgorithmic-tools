@@ -1,0 +1,109 @@
+#! /usr/bin/env python3
+
+import shutil
+import subprocess
+import argparse
+import random
+import tempfile
+import os
+import sysconfig
+from pathlib import Path
+
+parser = argparse.ArgumentParser(
+    description="Armor a Python program by wrapping it in a C executable.",
+)
+parser.add_argument('py', nargs=1, help='A Python program.')
+
+wrapper = """
+#include <Python.h>
+
+extern uint8_t data[]     asm("_binary_scramble_start");
+extern uint8_t data_end[] asm("_binary_scramble_end");
+
+uint8_t key[] = {key};
+int keysize = {key_size}; 
+
+int main(int argc, char *argv[])
+{{
+    unsigned int data_size = data_end - data;
+    char *script = (char *) malloc(data_size + 1); 
+    memcpy(script, data, data_size);
+    script[data_size] = 0; 
+    
+    for (int i=0; i<data_size; i++) {{
+        uint8_t *key_ptr = &key[i % keysize];
+        script[i] = script[i] ^ *key_ptr;
+        (*key_ptr)++;
+    }}
+    wchar_t *program = Py_DecodeLocale(argv[0], NULL);
+    
+    if (program == NULL) {{
+        fprintf(stderr, "Fatal error: cannot decode argv[0]");
+        exit(1);
+    }}
+    Py_SetProgramName(program);  /* optional but recommended */
+    Py_Initialize();
+    PyRun_SimpleString(script);
+    Py_Finalize();
+    PyMem_RawFree(program);
+    // paranoia
+    memset(script, 0, data_size);
+    free(script);
+    return 0;
+}}
+"""
+
+compiler = """{config[LINKCC]} -Wl,--format=binary -Wl,scramble -Wl,--format=default -I{config[INCLUDEPY]} -o {outfile} loader.cpp {config[MODLIBS]} {pylib} {config[SYSLIBS]} {config[LIBS]}"""
+
+
+def scramble(in_file, out_file, key):
+
+    with open(in_file) as f:
+        data = f.read()
+
+    with open(out_file, 'wb') as f:
+        for i, c in enumerate(data):
+            e = ord(c) ^ key[i % len(key)]
+            key[i % len(key)] = (key[i % len(key)] + 1) % 256
+            f.write(bytes([e]))
+
+
+def main():
+    args = parser.parse_args()
+    python = Path(args.py[0])
+    config = sysconfig.get_config_vars()
+
+    if config['Py_ENABLE_SHARED'] == 1:
+        pylib = config['BLDLIBRARY']
+    else:
+        pylib = "{}/{}".format(config['LIBPL'], config['BLDLIBRARY'])
+
+    key_size = 32
+    key = []
+    for _ in range(key_size):
+        key.append(random.randint(0, 255))
+
+    key_text = '{' + ', '.join(["0x{:x}".format(x) for x in key]) + '}'
+
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+
+        # Convert the Python file
+        py_scramble = tmp / 'scramble'
+        scramble(str(python), str(py_scramble), key)
+
+        # Write the C loader
+        c_loader = tmp / 'loader.cpp'
+        with open(str(c_loader), 'w') as f:
+            f.write(wrapper.format(key=key_text, key_size=key_size))
+
+        # Compile them together.
+        subprocess.run(compiler.format(outfile=python.stem, config=config, pylib=pylib),
+                       shell=True, check=True, cwd=str(tmp))
+
+        # Copy the binary back.
+        shutil.copy2(str(tmp / python.stem), os.getcwd())
+
+
+if __name__ == '__main__':
+    main()

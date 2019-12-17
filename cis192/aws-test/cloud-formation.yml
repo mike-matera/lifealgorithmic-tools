@@ -1,0 +1,338 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The CIS-192 Network
+
+Resources:
+
+  #
+  # Create the VPC for CIS-192 Networks and related infrastructure.
+  #
+
+  CIS192Cloud:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.192.0.0/16
+      Tags:
+        -
+          Key: Application
+          Value: !Ref AWS::StackId
+
+  Gateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        -
+          Key: Application
+          Value: !Ref AWS::StackId
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn:
+      - CIS192Cloud
+      - Gateway
+    Properties:
+      VpcId: !Ref CIS192Cloud
+      InternetGatewayId: !Ref Gateway
+
+  IPv6CIDRBlock:
+     Type: AWS::EC2::VPCCidrBlock
+     Properties:
+        AmazonProvidedIpv6CidrBlock: true
+        VpcId: !Ref CIS192Cloud
+
+  Routing:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CIS192Cloud
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - InternalSubnet
+      - Gateway
+    Properties:
+       RouteTableId: !Ref Routing
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId: !Ref Gateway
+
+  #
+  # Create the external network
+  #
+
+  ExternalSubnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CIDRBlock
+    Properties:
+      AvailabilityZone: us-west-2a
+      CidrBlock: 10.192.1.0/24
+      Ipv6CidrBlock:
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '01::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt CIS192Cloud.Ipv6CidrBlocks ]]]
+      MapPublicIpOnLaunch: True
+      VpcId: !Ref CIS192Cloud
+      Tags:
+        -
+          Key: Application
+          Value: !Ref AWS::StackId
+
+  ExternalSubnetRoute:
+    DependsOn:
+      - ExternalSubnet
+      - Routing
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref ExternalSubnet
+      RouteTableId: !Ref Routing
+
+  ExternalACL:
+    Type: AWS::EC2::NetworkAcl
+    DependsOn:
+      - CIS192Cloud
+    Properties:
+      VpcId: !Ref CIS192Cloud
+
+  AllowIngressAllExternal:
+    Type: AWS::EC2::NetworkAclEntry
+    DependsOn:
+      - ExternalACL
+    Properties:
+      NetworkAclId: !Ref ExternalACL
+      RuleNumber: 10
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 0
+        To: 65535
+
+  AllowEgressAllExternal:
+    Type: AWS::EC2::NetworkAclEntry
+    DependsOn:
+      - ExternalACL
+    Properties:
+      NetworkAclId: !Ref ExternalACL
+      RuleNumber: 10
+      Egress: true
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 0
+        To: 65535
+
+  ExternalACLAssociation:
+     Type: AWS::EC2::SubnetNetworkAclAssociation
+     DependsOn:
+       - ExternalSubnet
+       - ExternalACL
+     Properties:
+       SubnetId: !Ref ExternalSubnet
+       NetworkAclId: !Ref ExternalACL
+
+  #
+  # Create the internal network
+  #
+
+  InternalSubnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CIDRBlock
+    Properties:
+      AvailabilityZone: us-west-2a
+      CidrBlock: 10.192.2.0/24
+      Ipv6CidrBlock:
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '02::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt CIS192Cloud.Ipv6CidrBlocks ]]]
+      MapPublicIpOnLaunch: True
+      VpcId: !Ref CIS192Cloud
+      Tags:
+        -
+          Key: Application
+          Value: !Ref AWS::StackId
+
+  InternalSubnetRoute:
+    DependsOn:
+      - InternalSubnet
+      - Routing
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref InternalSubnet
+      RouteTableId: !Ref Routing
+
+  InternalACL:
+    Type: AWS::EC2::NetworkAcl
+    DependsOn:
+      - CIS192Cloud
+    Properties:
+      VpcId: !Ref CIS192Cloud
+
+  AllowIngressAllInternal:
+    Type: AWS::EC2::NetworkAclEntry
+    DependsOn:
+      - InternalACL
+    Properties:
+      NetworkAclId: !Ref InternalACL
+      RuleNumber: 10
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 0
+        To: 65535
+
+  AllowEgressAllInternal:
+    Type: AWS::EC2::NetworkAclEntry
+    DependsOn:
+      - InternalACL
+    Properties:
+      NetworkAclId: !Ref InternalACL
+      RuleNumber: 10
+      Egress: true
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 0
+        To: 65535
+
+  InternalACLAssociation:
+     Type: AWS::EC2::SubnetNetworkAclAssociation
+     DependsOn:
+       - InternalSubnet
+       - InternalACL
+     Properties:
+       SubnetId: !Ref InternalSubnet
+       NetworkAclId: !Ref InternalACL
+
+  #
+  # Create a security group that allows inbound SSH.
+  #
+
+  AllowSSH:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: CIS192Cloud
+    Properties:
+      GroupDescription: Allow SSH into this network
+      GroupName: Allow SSH
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        -
+          Key: Application
+          Value: !Ref AWS::StackId
+      VpcId: !Ref CIS192Cloud
+
+  #
+  # Create the router
+  #
+  # The router is more complicated than normal instances because it has multiple interfaces and a public IP.
+  # The interfaces and IP association have to be created manually.
+  #
+
+  RouterPrivate:
+      Type: AWS::EC2::NetworkInterface
+      DependsOn:
+        - InternalSubnet
+        - AllowSSH
+      Properties:
+        Tags:
+            -
+              Key: Application
+              Value: !Ref AWS::StackId
+        SourceDestCheck: false
+        SubnetId: !Ref InternalSubnet
+        PrivateIpAddress: 10.192.2.100
+
+  RouterPublic:
+      Type: AWS::EC2::NetworkInterface
+      DependsOn:
+        - ExternalSubnet
+        - AllowSSH
+      Properties:
+        GroupSet:
+            - !Ref AllowSSH
+        Tags:
+            -
+              Key: Application
+              Value: !Ref AWS::StackId
+        SourceDestCheck: false
+        SubnetId: !Ref ExternalSubnet
+        PrivateIpAddress: 10.192.1.100
+
+  AccessIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+
+  AssociateRouterIP:
+    Type: AWS::EC2::EIPAssociation
+    DependsOn:
+      - AccessIP
+      - RouterPublic
+    Properties:
+      AllocationId: !GetAtt AccessIP.AllocationId
+      NetworkInterfaceId: !Ref RouterPublic
+
+  Router:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - RouterPublic
+      - RouterPrivate
+      - AssociateRouterIP
+    Properties:
+      AvailabilityZone: us-west-2a
+      KeyName: cis192-keypair
+      ImageId: ami-07b4f3c02c7f83d59 # Ubuntu Bionic
+      InstanceType: t3.nano
+      NetworkInterfaces:
+        -
+          NetworkInterfaceId: !Ref RouterPublic
+          DeviceIndex: 0
+      Tags:
+        -
+          Key: Application
+          Value: !Ref AWS::StackId
+
+  RouterInternalAttachment:
+    Type: AWS::EC2::NetworkInterfaceAttachment
+    DependsOn:
+      - Router
+      - RouterPrivate
+    Properties:
+      InstanceId: !Ref Router
+      NetworkInterfaceId: !Ref RouterPrivate
+      DeviceIndex: 1
+
+  #
+  # Create the Application Server.
+  #
+
+  AppServer:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - InternalSubnet
+      - AllowSSH
+    Properties:
+      AvailabilityZone: us-west-2a
+      KeyName: cis192-keypair
+      ImageId: ami-07b4f3c02c7f83d59 # Ubuntu Bionic
+      InstanceType: t3.nano
+      NetworkInterfaces:
+        -
+          AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          PrivateIpAddress: 10.192.2.101
+          SubnetId: !Ref InternalSubnet
+          GroupSet:
+            - !Ref AllowSSH
+      Tags:
+        -
+          Key: Application
+          Value: !Ref AWS::StackId
+

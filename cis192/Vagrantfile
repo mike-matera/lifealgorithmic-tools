@@ -1,0 +1,63 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "generic/ubuntu1804"
+  config.vm.box_check_update = false
+
+  config.vm.define "router", primary: true do |web|
+    web.vm.box = "generic/ubuntu1804"
+    web.vm.network "public_network", nic_type: "virtio", bridge: "wlp2s0"
+    web.vm.network "private_network", nic_type: "virtio", ip: "0.0.0.0",
+                   auto_config: false, virtualbox__intnet: "sw-router"
+    web.vm.provider "virtualbox" do |vb|
+      vb.linked_clone = true
+      vb.memory = "512"
+      vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
+    end
+  end
+
+  config.vm.define "switch" do |switch|
+    switch.vm.box = "generic/ubuntu1804"
+    switch.vm.network "private_network", nic_type: "virtio", ip: "0.0.0.0",
+                      auto_config: false, virtualbox__intnet: "sw-router"
+    switch.vm.network "private_network", nic_type: "virtio", ip: "0.0.0.0",
+                      auto_config: false, virtualbox__intnet: "sw-app"
+    switch.vm.network "private_network", nic_type: "virtio", ip: "0.0.0.0",
+                      auto_config: false, virtualbox__intnet: "sw-infra"
+
+    switch.vm.provider "virtualbox" do |vb|
+      vb.linked_clone = true
+      vb.memory = "512"
+      vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+      vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
+      vb.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
+    end
+  end
+
+  config.vm.define "app" do |app|
+    app.vm.box = "generic/ubuntu1804"
+    app.vm.network "private_network", nic_type: "virtio", ip: "0.0.0.0",
+                   auto_config: false, virtualbox__intnet: "sw-app"      
+
+    app.vm.provider "virtualbox" do |vb|
+      vb.linked_clone = true
+      vb.memory = "512"
+      vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+    end
+  end
+
+  config.vm.define "infra" do |infra|
+    infra.vm.box = "generic/ubuntu1804"
+    infra.vm.network "private_network", nic_type: "virtio", ip: "0.0.0.0",
+                     auto_config: false, virtualbox__intnet: "sw-infra"
+
+    infra.vm.provider "virtualbox" do |vb|
+      vb.linked_clone = true
+      vb.memory = "512"
+      vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+    end
+  end
+
+end
