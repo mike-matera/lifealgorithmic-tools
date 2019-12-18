@@ -38,11 +38,11 @@ elif args.command[0] == 'resize' :
         exit(1) 
     
 iam = boto3.client('iam')
-c9_1 = boto3.client('cloud9')
+c9_1 = boto3.client('cloud9', region_name='us-west-2')
 #c9_1 = boto3.client('cloud9', region_name='us-west-2')
-c9_2 = boto3.client('cloud9', region_name='us-east-2')
-ec2_1 = boto3.client('ec2', region_name='us-west-2')
-ec2_2 = boto3.client('ec2', region_name='us-east-2')
+#c9_2 = boto3.client('cloud9', region_name='us-east-2')
+#ec2_1 = boto3.client('ec2', region_name='us-west-2')
+#ec2_2 = boto3.client('ec2', region_name='us-east-2')
 
 
 def get_c9(username):
@@ -102,7 +102,14 @@ def delete_cloud9(username, user_arn) :
     # Find any C9 instances.
     c9 = get_c9(username)
     result = c9.list_environments()
-    env_desc = list(c9.describe_environments(environmentIds=result['environmentIds'])['environments'])
+
+    env_desc = []
+    for env in result['environmentIds']:
+        try:
+            env_desc += list(c9.describe_environments(environmentIds=[env['environments']]))
+        except:
+            print(f'Warning: No environment for id: {env}')
+
     while 'nextToken' in result:
         result = c9.list_environments(nextToken=result['nextToken'])
         env_desc += list(c9.describe_environments(environmentIds=result['environmentIds'])['environments'])
