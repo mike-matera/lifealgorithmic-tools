@@ -1,11 +1,13 @@
 
-OUTPUTDIR = $(realpath ../source/_static)/code
+OUTPUTDIR = $(realpath ../source)/code
 
-html: pydist
-	$(MAKE) -C cis191 html
-	$(MAKE) -C cis194 html
+all: pydist
+	# $(MAKE) -C cis194 html
 
-pydist:
+$(OUTPUTDIR):
+	mkdir $(OUTPUTDIR) 
+
+pydist: $(OUTPUTDIR)
 	python ./setup.py sdist -d $(OUTPUTDIR)/dist > /dev/null
 
 clean:
