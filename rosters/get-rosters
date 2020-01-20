@@ -1,0 +1,64 @@
+#! python3 
+
+import os
+import sys
+import json
+import getpass
+import formatters 
+import pathlib 
+
+import fetcher 
+import formatters 
+
+
+def main():
+	if len(sys.argv) == 1:     
+		username = input('User ID: ').strip()
+		password = getpass.getpass('Password: ').strip()
+		rosters = fetcher.fetch(username, password)
+		print("Writing rosters.json")
+		with open('rosters.json', 'w') as f:
+			f.write(json.dumps(rosters))
+
+	elif len(sys.argv) == 2:
+		print("Reading rosters.json")
+		with open('rosters.json') as f:
+			rosters = json.loads(f.read())
+	
+	else:
+		print('usage:\n\t' + sys.argv[0] + ' [<json-input>]')
+		exit(-1)
+
+	# process rosters
+	section_map = {}
+	for section_key in rosters: 
+		course, term = section_key.lower().split(':')
+		department, number, section = course.split('-')
+		term = term.replace(' ', '-')
+		key = f'{term}/{department}-{number}'
+		if key not in section_map:
+			section_map[key] = {
+				'department': department,
+				'number': number,
+				'term': term,
+				'dir': f'{term}',
+				'prefix': f'{term}/{department}-{number}-',
+				'roster': []
+			}
+		section_map[key]['roster'] += rosters[section_key]['roster']
+
+	for section in section_map:
+		dirpart = pathlib.Path(section_map[section]['dir'])
+		prefix = section_map[section]['prefix']
+		if not dirpart.exists():
+			os.mkdir(dirpart)
+
+		formatters.gen_maillist(section_map[section])
+		formatters.gen_unix(section_map[section])
+		formatters.gen_netlab(section_map[section])
+		formatters.gen_vlab(section_map[section])
+		formatters.gen_sql(section_map[section])
+
+
+if __name__ == '__main__':
+	main()
