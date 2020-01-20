@@ -36,7 +36,7 @@ setuptools.setup(
         'lifealgorithmic/decode-cfm',
         'lifealgorithmic/notebook', 
         'lifealgorithmic/aws-roster', 
-        'cis15/upload_results.py'
+        'cis15/upload_results.py',
         'rosters/get-rosters',
     ],
 

@@ -26,7 +26,7 @@ def main():
 def fetch(username, password):
     try:
         driver = webdriver.Firefox()
-        driver.implicitly_wait(2)
+        driver.implicitly_wait(5)
 
         driver.get('https://success.cabrillo.edu/Student/')
         username_box = driver.find_element_by_id('userNameInput')
