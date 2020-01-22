@@ -57,6 +57,7 @@ def main():
 		formatters.gen_netlab(section_map[section])
 		formatters.gen_vlab(section_map[section])
 		formatters.gen_sql(section_map[section])
+		formatters.gen_playbook(section_map[section])
 
 
 if __name__ == '__main__':

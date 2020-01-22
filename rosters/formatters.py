@@ -1,6 +1,12 @@
 import re
 import crypt 
 
+from yaml import load, dump
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
 def extract_name(student):
 	rval = dict()
 	parts = student['fullname'].split()
@@ -19,6 +25,7 @@ def gen_login(class_number, student):
 	last_bound = min(3, len(lastname))
 	rval['login'] = lastname[0:first_bound].lower() + firstname[0:last_bound].lower() + class_number
 	rval['password'] = firstname[0:2] + lastname[0:2] + student['id'][-4:]
+	rval['safename'] = firstname[0] + '. ' + lastname
 	return rval
 
 
@@ -80,3 +87,20 @@ def gen_sql(section_map):
 			# Fixes a bug in some MySQL versions...
 			f.write('FLUSH PRIVILEGES;\n'); 
 
+
+def gen_playbook(section_map):
+	config = {
+		'users': [],
+	}
+	for student in section_map['roster']:
+		login = gen_login(section_map['number'], student)
+		course_id = section_map['department'] + section_map['number']
+		config['users'].append({
+			'name': login['login'],
+			'comment': login['safename'],
+			'password': crypt.crypt(login['password'], crypt.mksalt()),
+			'groups': ['users', course_id], 
+			'home': f"/home/{course_id}/{login['login']}",
+		})
+	with open(f"{section_map['prefix']}users.yaml", 'w') as f:
+		f.write(dump(config, Dumper=Dumper))
