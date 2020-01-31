@@ -69,33 +69,27 @@ def hash_get_c9(username) :
     else:
         return c9_2
 
-    
-def extract_name( student ) :
-    rval = dict()
-    n = student['name'];
-    comma = n.index(',');
-    rval['family'] = n[0:comma]
-    dot = n.find('.')
-    if dot > 0:
-        rval['given'] = n[comma+2:dot-2]
-    else:
-        rval['given'] = n[comma+2:]
 
-    # Trim out spaces. The "Jo Ann" problem. 
-    rval['given'] = re.sub(r'\s+', r'', rval['given'])
-    rval['family'] = re.sub(r'\s+', r'', rval['family'])
-
-    return rval
+def extract_name(student):
+	rval = dict()
+	parts = student['fullname'].split()
+	rval['family'] = parts[-1]
+	rval['given'] = ' '.join(parts[0:-1])
+	return rval
 
 
-def gen_login(class_name, student) :
-    rval = extract_name(student)
-    m = re.search('^(cs|cis)(\d+).*$', class_name)
-    classnumber = m.group(2)
-    rval['groups'] = [m.group(1) + '-' + classnumber]
-    rval['login'] = rval['family'][0:3].lower() + rval['given'][0:3].lower() + classnumber
-    rval['password'] = rval['given'][0:2] + rval['family'][0:2] + student['id'][-4:]
-    return rval
+def gen_login(class_number, student):
+	rval = extract_name(student)
+	firstname = rval['given'].replace(' ', '')
+	lastname = rval['family'].replace(' ', '')
+	lastname = lastname.replace('.', '')
+	lastname = lastname.replace('-', '')
+	first_bound = min(3, len(firstname))
+	last_bound = min(3, len(lastname))
+	rval['login'] = lastname[0:first_bound].lower() + firstname[0:last_bound].lower() + class_number
+	rval['password'] = firstname[0:2] + lastname[0:2] + student['id'][-4:]
+	rval['safename'] = firstname[0] + '. ' + lastname
+	return rval
 
 
 def delete_cloud9(username, user_arn) :
@@ -104,12 +98,7 @@ def delete_cloud9(username, user_arn) :
     result = c9.list_environments()
 
     env_desc = []
-    for env in result['environmentIds']:
-        try:
-            env_desc += list(c9.describe_environments(environmentIds=[env['environments']]))
-        except:
-            print(f'Warning: No environment for id: {env}')
-
+    env_desc += list(c9.describe_environments(environmentIds=result['environmentIds'])['environments'])
     while 'nextToken' in result:
         result = c9.list_environments(nextToken=result['nextToken'])
         env_desc += list(c9.describe_environments(environmentIds=result['environmentIds'])['environments'])
@@ -120,7 +109,6 @@ def delete_cloud9(username, user_arn) :
         if env['ownerArn'] == user_arn :
             print('Deleting Cloud9 environment {} for {}'.format(env['id'], user_arn))
             c9.delete_environment(environmentId=env['id'])
-
 
 def delete_user(username):
     global iam
@@ -215,13 +203,16 @@ def main():
             rosters = json.loads(r.read())
 
         roster_users = {}
-        for user in rosters['cis15f19'] :
-            login = gen_login('cis15', user)
-            roster_users[login['login']] = login
 
-        #for user in rosters['cis54f18'] :
-        #    login = gen_login('cis54', user)
-        #    roster_users[login['login']] = login
+        for section_key in rosters:
+            section, term = section_key.split(':')
+            section = section.lower()[0:-2]
+            coursenum = section[4:]
+            if term == "Spring 2020" and (section == 'cis-15' or section == 'cis-54'):
+                for user in rosters[section_key]['roster']:
+                    login = gen_login(coursenum, user)
+                    login['groups'] = [section]
+                    roster_users[login['login']] = login
 
         aws_users = iam.list_users(PathPrefix='/student/')
 
@@ -229,7 +220,7 @@ def main():
         aws_usernames = set([ x['UserName'] for x in aws_users['Users'] ])
 
         to_add = roster_usernames - aws_usernames
-        for user in to_add :
+        for user in to_add:
             add_user(user, roster_users[user]['password'], roster_users[user]['groups'])
 
         to_del = aws_usernames - roster_usernames
