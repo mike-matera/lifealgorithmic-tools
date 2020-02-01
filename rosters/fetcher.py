@@ -84,6 +84,17 @@ def fetch(username, password):
                         'status': 'enrolled',
                     })
                     logging.info(f"Enrolled: {course_data[course_id]['roster'][-1]}")
+                elif len(row_data) == 5:
+                    # The user has added pronouns
+                    course_data[course_id]['roster'].append({
+                        'fullname': row_data[0],
+                        'id': row_data[2],
+                        'email': row_data[4],
+                        'status': 'enrolled',
+                    })
+                    logging.info(f"Enrolled: {course_data[course_id]['roster'][-1]}")
+                else:
+                    logging.info(f'Failed to process: {row_data}')
 
             # Faster wait for the waitlist.
             waitlist_button = driver.find_element_by_xpath('//a[@href="#waitlist-content-nav"]')
