@@ -52,6 +52,7 @@ def fetch(username, password):
         course_data = {}
         for section_url in section_urls:
             driver.get(section_url)
+            time.sleep(0.5)
             course_fullname = driver.find_element_by_id('user-profile-name').text
             course_term = driver.find_element_by_id('section-header-term').text    
             course_id = course_fullname.split(':')[0]
@@ -65,6 +66,7 @@ def fetch(username, password):
             logging.info(f'Working on {course_fullname}')
         
             # Let the table load. Click the waitlist. 
+            time.sleep(0.5)
             waitlist_button = driver.find_element_by_xpath('//a[@href="#waitlist-content-nav"]')
             waitlist_button.click()
             time.sleep(0.5)
