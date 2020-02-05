@@ -105,7 +105,6 @@ def delete_cloud9(username, user_arn) :
 
     print(f'Looking for C9 environments for {username} with ARN {user_arn}')
     for env in env_desc:
-        print(f"Searching environment with owner {env['ownerArn']}")
         if env['ownerArn'] == user_arn :
             print('Deleting Cloud9 environment {} for {}'.format(env['id'], user_arn))
             c9.delete_environment(environmentId=env['id'])
