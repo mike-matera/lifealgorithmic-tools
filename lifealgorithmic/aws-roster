@@ -152,13 +152,13 @@ def create_cloud9(username, user_arn) :
                                      permissions='read-write') 
 
 
-def add_user(username, password, groups=[]):
+def add_user(username, password, groups=[], path='/student/'):
     global iam
 
     c9 = get_c9(username)
     
     print ('Adding user', username) 
-    iam.create_user(UserName=username, Path='/student/')
+    iam.create_user(UserName=username, Path=path)
     w = iam.get_waiter('user_exists')
     w.wait(UserName=username)
 
@@ -251,7 +251,7 @@ def main():
             delete_user(args.user)
 
     elif args.command[0] == 'add' :
-        add_user(args.user, args.password, args.groups.split(','))
+        add_user(args.user, args.password, args.groups.split(','), path='/')
         
     elif args.command[0] == 'resize' :
         resize_all(args.type)
