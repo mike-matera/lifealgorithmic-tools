@@ -83,11 +83,11 @@ def gen_sql(section_map):
 		for student in section_map['roster']:
 			login = gen_login(section_map, section_map['number'], student)
 			f.write('DROP USER IF EXISTS \'' + login['login'] + '\';\n');
-			f.write('CREATE USER \'' + login['login'] + '\'@\'%.cis.cabrillo.edu\' IDENTIFIED BY \'' + login['password'] + '\';\n'); 
-			f.write('GRANT ALL ON `' + login['login'] + '\\_%`.* to \'' + login['login'] + '\'@\'%.cis.cabrillo.edu\' WITH GRANT OPTION;\n'); 
-			f.write('GRANT SELECT ON `public\\_%`.* to \'' + login['login'] + '\'@\'%.cis.cabrillo.edu\';\n'); 
-			f.write('GRANT SELECT ON `mysql`.`user` to \'' + login['login'] + '\'@\'%.cis.cabrillo.edu\';\n'); 
-			f.write('GRANT FILE ON *.* to \'' + login['login'] + '\'@\'%.cis.cabrillo.edu\';\n'); 
+			f.write('CREATE USER \'' + login['login'] + '\'@\'%\' IDENTIFIED BY \'' + login['password'] + '\';\n'); 
+			f.write('GRANT ALL ON `' + login['login'] + '\\_%`.* to \'' + login['login'] + '\'@\'%\' WITH GRANT OPTION;\n'); 
+			f.write('GRANT SELECT ON `public\\_%`.* to \'' + login['login'] + '\'@\'%\';\n'); 
+			f.write('GRANT SELECT ON `mysql`.`user` to \'' + login['login'] + '\'@\'%\';\n'); 
+			f.write('#GRANT FILE ON *.* to \'' + login['login'] + '\'@\'%\';\n'); 
 			# Fixes a bug in some MySQL versions...
 			f.write('FLUSH PRIVILEGES;\n'); 
 
