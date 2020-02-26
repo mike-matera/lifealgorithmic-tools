@@ -19,6 +19,7 @@ setuptools.setup(
         'python-Levenshtein', 
         'pyyaml', 
         'boto3',
+        'jupyter',
     ],
 
     packages=[
