@@ -3,10 +3,12 @@
 Extract Jupyter Notebooks from a Canvas ZIP as HTML.
 """
 
+import asyncio
 import shutil
 import subprocess
 import argparse
 import logging
+import multiprocessing
 from pathlib import Path
 
 from lifealgorithmic.canvas import Submissions
@@ -21,12 +23,23 @@ parser.add_argument('output', nargs=1, help='Output base file.')
 parser.add_argument('--users', help='A comma separated list of users.')
 
 
-def main():
+async def worker(queue):
+    while not queue.empty(): 
+        task = await queue.get()
+        proc = await asyncio.create_subprocess_shell(task['cmd'], cwd=task['cwd'])
+        await proc.wait()
+        queue.task_done()
+
+
+async def main():
     args = parser.parse_args()
 
     outfile = Path(args.output[0])
     if outfile.exists():
         raise FileExistsError(outfile)
+
+    loop = asyncio.get_event_loop()
+    queue = asyncio.Queue()
 
     users = None
     if args.users is not None:
@@ -35,10 +48,23 @@ def main():
     subs = Submissions(args.zip[0], users=users)
     for user, path in subs.users():
         for found in path.glob('**/*.ipynb'):
-            subprocess.run(f'jupyter nbconvert "{found}"', cwd=path, shell=True, check=True)
+            if ".ipynb_checkpoints" not in str(found): 
+                await queue.put({
+                    'cmd': f'jupyter nbconvert "{found}"',
+                    'cwd': path,
+                })
+
+    for _ in range(multiprocessing.cpu_count()):
+        loop.create_task(worker(queue))
+
+    print('Waiting for queue to empty.')
+    await queue.join()
 
     shutil.make_archive(outfile.with_suffix(''), outfile.suffix[1:], subs.workdir())
 
 
 if __name__ == '__main__':
-    main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.close()
+ 
