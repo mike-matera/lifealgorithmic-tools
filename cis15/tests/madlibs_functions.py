@@ -34,11 +34,11 @@ class MadLibs01Functions(Project):
         self.assertIsNotNone(proj.read_madlib_file.__doc__,
                            "Your read_madlib_file() function doesn't have a docstring.")
         
-        self.assertIsNotNone(proj.do_ask_word.__doc__,
+        self.assertIsNotNone(proj.ask_one_word.__doc__,
                            "Your do_madlib_input() function doesn't have a docstring.")
 
-        self.assertIsNotNone(proj.display_madlib.__doc__,
-                            "Your display_madlib() function doesn't have a docstring.")
+        self.assertIsNotNone(proj.save_madlib.__doc__,
+                            "Your save_madlib() function doesn't have a docstring.")
 
     def test_3_read_madlib_file(self):
         '''The read_madlib_file() function did not return what I expexed. See the log files.'''
@@ -58,22 +58,22 @@ class MadLibs01Functions(Project):
         words = []
         with io_control('\n'.join(self.words)) as stdout:
             for type in self.types:
-                words.append(proj.do_ask_word(type))
+                words.append(proj.ask_one_word(type))
 
         for i, word in enumerate(words):
             self.assertEqual(word.strip(), self.words[i].strip(), "You didn't ask for a word type that I expected.")
 
-    def test_5_display_madlib(self):
-        '''The display_madlib() function didn't work as expected.''' 
-        self.banner("Testing your display_madlib() function.")
+    def test_5_save_madlib(self):
+        '''The save_madlib() function didn't work as expected.''' 
+        self.banner("Testing your save_madlib() function.")
         proj = self.load_file_safe(self.projfile)
         complete = self.template.format(*self.values)
         with io_control('') as stdout:
-            proj.display_madlib(complete, self.outfile)
+            proj.save_madlib(complete)
             got = stdout.getvalue().strip()
 
         self.assertEqual(complete, got, "You didn't print the MadLib that I expected.")
-        self.assertTrue(os.path.exists(self.outfile),
+        self.assertTrue(os.path.exists("madlibs.out") or os.path.exists("madlib.out"),
                         "I asked you to create {} and I don't see it.".format(self.outfile))
 
             
