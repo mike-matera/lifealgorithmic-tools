@@ -27,6 +27,7 @@ setuptools.setup(
         'cis15.tests', 
         'lifealgorithmic.linux',
         'rosters',
+        'cfge',
     ],
     
     scripts=[
