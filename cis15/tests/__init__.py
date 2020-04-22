@@ -54,10 +54,17 @@ class Project(unittest.TestCase):
         return files[0]
 
     def load_file_safe(self, filename):
+        stdin = sys.stdin
+        stdout = sys.stdout
+        sys.stdin = None
+        sys.stdout = io.StringIO()
         try:
             mod = self.load_file(filename)
         except:
             raise self.fail("Test failed because there's code outside of a function.")
+        finally:
+            sys.stdin = stdin
+            sys.stdout = stdout
         return mod
 
     def load_file(self, filename):
@@ -92,7 +99,10 @@ class Project(unittest.TestCase):
     @contextmanager
     def fail_on_input(self):
         stdin = sys.stdin
+        stdout = sys.stdout
+
         sys.stdin = None
+        sys.stdout = io.StringIO()
 
         try:
             yield
@@ -102,3 +112,4 @@ class Project(unittest.TestCase):
 
         finally:
             sys.stdin = stdin
+            sys.stdout = stdout 

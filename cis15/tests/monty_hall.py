@@ -3,7 +3,7 @@ import sys
 import pexpect
 import random
 
-from . import Project
+from . import Project, io_control
 
 
 class MontyHall(Project):
@@ -22,7 +22,7 @@ class MontyHall(Project):
         got = test.expect([pexpect.TIMEOUT, '(?i)goat', '(?i)car'], timeout=1)
         test.close()
 
-        test = pexpect.spawnu(f'python3.6 "{self.projfile}"', logfile=sys.stdout, encoding='utf-8')
+        test = pexpect.spawnu(f'python3.6 "{self.projfile}"', logfile=None, encoding='utf-8')
         door = random.randrange(1, 4)
         test.sendline(str(door))
         test.sendline('switch')
@@ -99,11 +99,12 @@ class MontyHall(Project):
         '''Your montys_choice() function returned an incorrect result.'''
         self.banner('Checking the montys_choice() function.')
         proj = self.load_file_safe(self.projfile)
-        for guess in range(1, 4) :
-            for car in range (1, 4) :
-                monty = proj.montys_choice(car, guess)
-                if not self.monty_is_valid(car, guess, monty) :
-                    self.fail('Monty made the wrong choice:\n  I chose {} the car is behind {} and Monty opened the door {}'.format(guess, car, monty))
+        with self.fail_on_input():
+            for guess in range(1, 4) :
+                for car in range (1, 4) :
+                    monty = proj.montys_choice(car, guess)
+                    if not self.monty_is_valid(car, guess, monty) :
+                        self.fail('Monty made the wrong choice:\n  I chose {} the car is behind {} and Monty opened the door {}'.format(guess, car, monty))
 
     def ref_won(self, car, guess, choice) :
         if car == guess:
@@ -114,9 +115,7 @@ class MontyHall(Project):
     def x_test_7_has_won_bools(self) :
         '''Your has_won() function returned an incorrect result.'''
         self.banner('Checking the has_won() function.')
-        stdout = sys.stdout
-        sys.stdout = None
-        try :
+        with self.fail_on_input():
             for guess in range(1, 4) :
                 for car in range(1, 4) :
                     doors = [False, False, False]
@@ -125,8 +124,6 @@ class MontyHall(Project):
                         won = self.proj.has_won(*doors, guess, ss == 'switch')
                         if won != self.ref_won(car, guess, ss) :
                             self.fail("You told me I won when I should have lost. The car is behind door {}, the user initally cose door {} and then decided to {}".format(car, guess, ss))
-        finally:
-            sys.stdout = stdout
 
     def ref_won_words(self, car, guess, choice):
         if car == guess:
