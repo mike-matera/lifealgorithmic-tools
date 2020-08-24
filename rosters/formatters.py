@@ -7,11 +7,12 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
+
 def extract_name(student):
 	rval = dict()
 	parts = student['fullname'].split()
 	rval['family'] = parts[-1]
-	rval['given'] = ' '.join(parts[0:-1])
+	rval['given'] = parts[0]
 	return rval
 
 
@@ -29,7 +30,7 @@ def gen_login(section_map, class_number, student):
 	last_bound = min(3, len(lastname))
 	rval['login'] = lastname[0:first_bound].lower() + firstname[0:last_bound].lower() + class_number
 	rval['password'] = firstname[0:2] + lastname[0:2] + student['id'][-4:]
-	rval['safename'] = firstname[0] + '. ' + lastname
+	rval['safename'] = firstname + ' ' + lastname[0:2] + "."
 	rval['unixgroup'] = section_map['department'] + class_number
 	return rval
 
@@ -100,10 +101,9 @@ def gen_playbook(section_map):
 		login = gen_login(section_map, section_map['number'], student)
 		config['users'].append({
 			'name': login['login'],
-			'comment': login['safename'],
+			'realname': login['safename'],
 			'password': crypt.crypt(login['password'], crypt.mksalt()),
-			'groups': ['users', login['unixgroup']], 
-			'home': f"/home/{login['unixgroup']}/{login['login']}",
+			'state': 'present',
 		})
 	with open(f"{section_map['prefix']}users.yaml", 'w') as f:
 		f.write(dump(config, Dumper=Dumper))
