@@ -10,6 +10,13 @@ import time
 import datetime 
 import argparse 
 import pandas 
+import crypt 
+
+from yaml import load, dump
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
 from rosters import fetcher 
 from rosters import formatters 
@@ -58,9 +65,17 @@ def sections(stamp, rosters):
 			yield copy
 
 
-def print_all(df):
-	print(df.to_string(index=False))
-
+def gen_users(data):
+	"""Generate user config.""" 
+	users = []
+	for index, row in data[['login', 'password']].iterrows():
+		userdata = {
+			'login': row['login'],
+			'password': crypt.crypt(row['password'], None),
+			'state': 'present',
+		}
+		users.append(userdata)
+	print(dump(users, Dumper=Dumper))
 
 def main():
 	global args 
@@ -87,7 +102,27 @@ def main():
 			f.write(json.dumps(rosters))
 
 	data = pandas.read_json(rosterfile, orient='records')
-	latest = pandas.DataFrame(data[(data['timestamp'] == data['timestamp'].max())])
+
+	# Latest fetch
+	latest_fetch = data['timestamp'].max()
+	print("Latest fetch:", latest_fetch)
+
+	# Latest semester 
+	def semkey(a): 
+		term, year = a.split('-')
+		if term == 'spring':
+			return year + "-0"
+		elif term == 'summer':
+			return year + "-1"
+		else:
+			return year + "-2"
+
+	latest_sem = list(data['term'].unique())
+	latest_sem = sorted(latest_sem, reverse=True, key=semkey)[0]
+	print("Latest semester:", latest_sem)
+
+	# Latest slice
+	latest = pandas.DataFrame(data[(data['timestamp'] == latest_fetch) & (data['term'] == latest_sem)])
 
 	# Fix Email
 	latest['full email'] = '"' + latest['fullname'] + '" <' + latest['email'] + ">"
@@ -98,22 +133,7 @@ def main():
 		axis=1,
 	)
 
-	print_all(latest)
-	exit(0)
-
-	for section in section_map:
-		dirpart = pathlib.Path(section_map[section]['dir'])
-		prefix = section_map[section]['prefix']
-		if not dirpart.exists():
-			os.mkdir(dirpart)
-
-		formatters.gen_maillist(section_map[section])
-		formatters.gen_unix(section_map[section])
-		formatters.gen_netlab(section_map[section])
-		formatters.gen_vlab(section_map[section])
-		formatters.gen_sql(section_map[section])
-		formatters.gen_playbook(section_map[section])
-
+	gen_users(latest)
 
 if __name__ == '__main__':
 	main()

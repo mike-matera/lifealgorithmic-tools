@@ -36,7 +36,8 @@ def gen_sql(section_map):
 			f.write('FLUSH PRIVILEGES;\n'); 
 
 
-def gen_playbook(section_map):
+
+def x_gen_playbook(section_map):
 	config = {
 		'users': [],
 	}
