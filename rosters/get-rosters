@@ -1,50 +1,105 @@
 #! python3 
 
 import os
+import re 
 import sys
 import json
 import getpass
 import pathlib 
+import time 
+import datetime 
+import argparse 
+import pandas 
 
 from rosters import fetcher 
 from rosters import formatters 
 
+def gen_login(department, coursenum, fullname, sid):
+	# Strip letters off of the course number
+	m = re.match(r'(\d+).*', coursenum)
+	if m is None: 
+		raise ValueError(f"Misunderstood class_number: {coursenum}")
+	coursenum = m.group(1)
 
-def main():
-	if len(sys.argv) == 1:     
-		username = input('User ID: ').strip()
-		password = getpass.getpass('Password: ').strip()
-		rosters = fetcher.fetch(username, password)
-		print("Writing rosters.json")
-		with open('rosters.json', 'w') as f:
-			f.write(json.dumps(rosters))
+	# Split name into parts
+	parts = fullname.split()
+	family = parts[-1].replace(' ', '')
+	given = parts[0] \
+		.replace(' ', '') \
+		.replace('.', '') \
+		.replace('-', '')
 
-	elif len(sys.argv) == 2:
-		print("Reading rosters.json")
-		with open('rosters.json') as f:
-			rosters = json.loads(f.read())
-	
-	else:
-		print('usage:\n\t' + sys.argv[0] + ' [<json-input>]')
-		exit(-1)
+	first_bound = min(3, len(given))
+	last_bound = min(3, len(family))
 
-	# process rosters
-	section_map = {}
-	for section_key in rosters: 
+	login = family[0:first_bound].lower() + given[0:last_bound].lower() + coursenum
+	password = given[0:2] + family[0:2] + str(sid)[-4:]
+	safename = given + ' ' + family[0] + '.'
+	group = department + coursenum
+	return pandas.Series([family, given, login, password, safename, group])
+
+def sections(stamp, rosters):
+	"""Fixup the way data is represented."""
+	for section_key in rosters:
 		course, term = section_key.lower().split(':')
 		department, number, section = course.split('-')
 		term = term.replace(' ', '-')
-		key = f'{term}/{department}-{number}'
-		if key not in section_map:
-			section_map[key] = {
-				'department': department,
-				'number': number,
-				'term': term,
-				'dir': f'{term}',
-				'prefix': f'{term}/{department}-{number}-',
-				'roster': []
-			}
-		section_map[key]['roster'] += rosters[section_key]['roster']
+		section = {
+			'timestamp': stamp, 
+			'course': course, 
+			'term': term,
+			'department': department,
+			'number': number,
+			'section': section,
+		}
+		for student in rosters[section_key]['roster']:
+			copy = dict(section)
+			copy.update(student)
+			yield copy
+
+
+def print_all(df):
+	print(df.to_string(index=False))
+
+
+def main():
+	global args 
+
+	parser = argparse.ArgumentParser(description='Fetch and manage rosters.')
+	parser.add_argument('-f', dest='fetch', action='store_true', 
+		help="Fetch the rosters using Selenium")
+	args = parser.parse_args()
+
+	rosterfile = pathlib.Path('rosters.json')
+
+	if args.fetch:
+		if rosterfile.exists():
+			with open(rosterfile, 'r') as r:
+				rosters = json.loads(r.read())
+		else:
+			rosters = []
+		username = input('User ID: ').strip()
+		password = getpass.getpass('Password: ').strip()
+		for section in sections(time.time(), fetcher.fetch(username, password)):
+			rosters.append(section)
+		print("Writing rosters.json")
+		with open(rosterfile, 'w') as f:
+			f.write(json.dumps(rosters))
+
+	data = pandas.read_json(rosterfile, orient='records')
+	latest = pandas.DataFrame(data[(data['timestamp'] == data['timestamp'].max())])
+
+	# Fix Email
+	latest['full email'] = '"' + latest['fullname'] + '" <' + latest['email'] + ">"
+
+	# Add Login Columns 
+	latest[['family', 'given', 'login', 'password', 'safename', 'group']] = latest.apply(lambda x:
+		gen_login(x['department'], x['number'], x['fullname'], x['id']),
+		axis=1,
+	)
+
+	print_all(latest)
+	exit(0)
 
 	for section in section_map:
 		dirpart = pathlib.Path(section_map[section]['dir'])

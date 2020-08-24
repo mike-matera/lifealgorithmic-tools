@@ -105,11 +105,11 @@ def fetch(username, password):
             roster_rows = driver.find_elements_by_xpath('//table[@id="faculty-waitlist-table"]//tr')
             for row in roster_rows[1:]:
                 row_data = row.text.split('\n')
-                if len(row_data) == 5:
+                if len(row_data) == 6:
                     course_data[course_id]['roster'].append({
                         'fullname': row_data[0],
                         'id': row_data[1],
-                        'email': row_data[4],
+                        'email': row_data[5],
                         'status': 'wait',
                     })
                     logging.info(f"Wait list: {course_data[course_id]['roster'][-1]}")
