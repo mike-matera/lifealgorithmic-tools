@@ -24,8 +24,10 @@ class TestBubbleSort(Project):
 
     @staticmethod
     def ref_swap(l, p):
-        o = (p + 1) % len(l)
-        l[o], l[p] = l[p], l[o]
+        t = l[p]
+        l[p] = l[p+1]
+        l[p+1] = t
+        return l
 
     @staticmethod
     def list_equal(k, l):
@@ -36,7 +38,7 @@ class TestBubbleSort(Project):
                 return False
         return True
 
-    def x_test_3_swap_return_value(self):
+    def test_3_swap_return_value(self):
         """The bubble_swap() function should return a list."""
         self.banner('Testing the return value of your bubble_swap() function.')
         proj = self.load_file_safe(self.projfile)
@@ -54,44 +56,21 @@ class TestBubbleSort(Project):
         for _ in range(10):
             l.append(random.randint(0, 100))
 
-        exp = list(l)
-        got = list(l)
-        for place in range(10):
-            TestBubbleSort.ref_swap(exp, place)
-            with self.fail_on_input():
-                proj.bubble_swap(got, place)
-            if not TestBubbleSort.list_equal(exp, got):
+        for place in range(9):
+            exp = TestBubbleSort.ref_swap(list(l), place)
+            got = proj.bubble_swap(list(l), place)
+            if not TestBubbleSort.list_equal(exp,got):
                 self.fail(f"After calling bubble_swap({l}, {place}) you returned {got}")
 
     def test_5_sort_return_value(self):
         """The bubble_sort() function should return a list."""
         self.banner('Testing the return value of your bubble_sort() function.')
         proj = self.load_file_safe(self.projfile)
-        with self.fail_on_input():
-            l = proj.bubble_sort([0,1,2])
+        l = proj.bubble_sort([0,1,2])
         if not isinstance(l, list):
             self.fail("Your swap function doesn't return a list.")
 
-    def test_6_sort_copy(self):
-        """The bubble_sort() function should not modify the original list."""
-        self.banner("Testing that your bubble_sort() function makes a copy.")
-        proj = self.load_file_safe(self.projfile)
-        for _ in range(10):
-            l = []
-            for _ in range(10):
-                l.append(random.randint(-100, 100))
-
-            copy = list(l)
-            with self.fail_on_input():
-                got = proj.bubble_sort(copy)
-
-            if got == copy:
-                self.fail(f'Your bubble sort function returned the list it was given, not a copy.')
-
-            if not TestBubbleSort.list_equal(copy, l):
-                self.fail(f"""You changed the list I passed to bubble_sort()""")
-
-    def test_7_sort(self):
+    def test_6_sort(self):
         """The bubble_sort() function should return a sorted list."""
         self.banner("Testing that your bubble_sort() function sorts.")
         proj = self.load_file_safe(self.projfile)
@@ -100,9 +79,7 @@ class TestBubbleSort(Project):
             for _ in range(10):
                 l.append(random.randint(-100, 100))
 
-            with self.fail_on_input():
-                got = proj.bubble_sort(list(l))
-
+            got = proj.bubble_sort(list(l))
             if not TestBubbleSort.list_equal(sorted(l), got):
                 self.fail(f'I asked you to sort {l} and you returned {got}.')
 
