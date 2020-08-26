@@ -57,7 +57,7 @@ def gen_netlab(section_map):
 		f.write('User ID, Given/First Name, Family/Last Name, Display Name, Email\n')
 		for student in section_map['roster']:
 			login = gen_login(section_map, section_map['number'], student)
-			f.write(student['email'] + ',' + login['given'] + ',' + login['family'] + ',' + student['fullname'] + ',' + student['email'] + '\n')
+			f.write(student['id'] + ',' + login['given'] + ',' + login['family'] + ',' + student['fullname'] + ',' + student['email'] + '\n')
 
 
 def gen_vlab(section_map):
