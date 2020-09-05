@@ -21,6 +21,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('zip', nargs=1, help='A Canvas submissions.zip')
 parser.add_argument('output', nargs=1, help='Output base file.')
 parser.add_argument('--users', help='A comma separated list of users.')
+parser.add_argument('--execute', action='store_true', help='Execute notebooks during conversion.')
 
 
 async def worker(queue):
@@ -38,6 +39,10 @@ async def main():
     if outfile.exists():
         raise FileExistsError(outfile)
 
+    nbconvert_flags = ""
+    if args.execute:
+        nbconvert_flags += "--execute "
+
     loop = asyncio.get_event_loop()
     queue = asyncio.Queue()
 
@@ -50,7 +55,7 @@ async def main():
         for found in path.glob('**/*.ipynb'):
             if ".ipynb_checkpoints" not in str(found): 
                 await queue.put({
-                    'cmd': f'jupyter nbconvert "{found}"',
+                    'cmd': f'jupyter nbconvert {nbconvert_flags} "{found}"',
                     'cwd': path,
                 })
 
