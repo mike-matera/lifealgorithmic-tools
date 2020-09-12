@@ -41,7 +41,7 @@ async def main():
 
     nbconvert_flags = ""
     if args.execute:
-        nbconvert_flags += "--execute "
+        nbconvert_flags += "--execute --allow-errors --ExecutePreprocessor.interrupt_on_timeout=True --ExecutePreprocessor.kernel_name=python3 --ExecutePreprocessor.timeout=5"
 
     loop = asyncio.get_event_loop()
     queue = asyncio.Queue()
