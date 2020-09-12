@@ -18,7 +18,6 @@ setuptools.setup(
         'canvasapi', 
         'python-Levenshtein', 
         'pyyaml', 
-        'boto3',
         'jupyter',
     ],
 
