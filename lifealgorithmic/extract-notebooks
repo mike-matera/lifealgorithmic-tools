@@ -21,6 +21,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('zip', nargs=1, help='A Canvas submissions.zip')
 parser.add_argument('output', nargs=1, help='Output base file.')
 parser.add_argument('--users', help='A comma separated list of users.')
+parser.add_argument('--threads', type=int, default=multiprocessing.cpu_count(), help='The number of threads to use (defualt=ncpus)')
 parser.add_argument('--execute', action='store_true', help='Execute notebooks during conversion.')
 
 
@@ -59,7 +60,7 @@ async def main():
                     'cwd': path,
                 })
 
-    for _ in range(multiprocessing.cpu_count()):
+    for _ in range(args.threads):
         loop.create_task(worker(queue))
 
     print('Waiting for queue to empty.')
