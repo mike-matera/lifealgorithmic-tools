@@ -229,7 +229,7 @@ class LinuxTest:
 
         """
         self.debug = debug
-        assert os.geteuid() == 0, "You must be root to when you run this test."
+        #assert os.geteuid() == 0, "You must be root to when you run this test."
         atexit.register(self.print_cfm)
 
         self.input('[Enter to start the test]')
