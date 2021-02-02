@@ -17,20 +17,24 @@ def extract_name(student):
 
 
 def gen_login(section_map, class_number, student):
+	t = { 
+		ord("'"): "",
+		ord("."): "",
+		ord("-"): "",
+		ord(" "): "",
+	}
 	m = re.match(r'(\w+)(\d+).*', class_number)
 	if m is None: 
 		raise ValueError(f"Misunderstood class_number: {class_number}")
 	class_number = m.group(1) + m.group(2)
 	rval = extract_name(student)
-	firstname = rval['given'].replace(' ', '')
-	lastname = rval['family'].replace(' ', '')
-	lastname = lastname.replace('.', '')
-	lastname = lastname.replace('-', '')
+	firstname = rval['given'].translate(t)
+	lastname = rval['family'].translate(t)
 	first_bound = min(3, len(firstname))
 	last_bound = min(3, len(lastname))
 	rval['login'] = lastname[0:first_bound].lower() + firstname[0:last_bound].lower() + class_number
 	rval['password'] = firstname[0:2] + lastname[0:2] + student['id'][-4:]
-	rval['safename'] = firstname + ' ' + lastname[0:2] + "."
+	rval['safename'] = rval['given'] + ' ' + rval['family'][0:1] + "."
 	rval['unixgroup'] = section_map['department'] + class_number
 	return rval
 
