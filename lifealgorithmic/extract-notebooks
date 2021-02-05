@@ -37,8 +37,6 @@ async def main():
     args = parser.parse_args()
 
     outfile = Path(args.output[0])
-    if outfile.exists():
-        raise FileExistsError(outfile)
 
     nbconvert_flags = ""
     if args.execute:
