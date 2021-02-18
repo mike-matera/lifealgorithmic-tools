@@ -12,6 +12,10 @@ import subprocess
 import tempfile
 import pathlib
 import traceback
+import nacl.secret
+import nacl.pwhash
+import getpass
+import json 
 
 
 class Formatting:
@@ -74,12 +78,39 @@ class Color:
 
 class LinuxTest:
 
-    def __init__(self, secret):
+    def __init__(self, secret, testconfig=pathlib.Path('.tconfig')):
         self.score = 0
         self.total = 0
         self.secret = secret
         self.debug = False
         self.questions = []
+        self.configfile = testconfig
+        key = nacl.pwhash.argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, 
+            (secret + getpass.getuser()).encode('utf-8'), b'1234567890123456',
+            opslimit=nacl.pwhash.argon2i.OPSLIMIT_INTERACTIVE,
+            memlimit=nacl.pwhash.argon2i.MEMLIMIT_INTERACTIVE,
+            )
+        self.box = nacl.secret.SecretBox(key)
+        self.config = {}
+
+    def atexit(self):
+        self.print_cfm()
+        self.storeconfig()
+
+    def storeconfig(self):
+        print("DEBUG: store: config:", self.config)
+        with open(self.configfile, 'wb') as cf:
+            cf.write(self.box.encrypt(json.dumps(self.config).encode('utf-8')))
+
+    def loadconfig(self):
+        if not self.configfile.exists():
+            self.storeconfig()
+
+        with open(self.configfile, 'rb') as cf:
+            self.config = json.loads(self.box.decrypt(cf.read()).decode('utf-8'))
+
+        if self.debug:
+            print("DEBUG: load: config:", self.config)
 
     def get_cfm_number(self):
         secret_hash = hashlib.sha256()
@@ -230,7 +261,8 @@ class LinuxTest:
         """
         self.debug = debug
         #assert os.geteuid() == 0, "You must be root to when you run this test."
-        atexit.register(self.print_cfm)
+        self.loadconfig()
+        atexit.register(self.atexit)
 
         self.input('[Enter to start the test]')
         for q in self.questions:

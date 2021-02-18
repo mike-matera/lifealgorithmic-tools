@@ -19,6 +19,7 @@ setuptools.setup(
         'python-Levenshtein', 
         'pyyaml', 
         'jupyter',
+        'pynacl',
     ],
 
     packages=[
