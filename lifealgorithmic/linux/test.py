@@ -268,3 +268,41 @@ class LinuxTest:
         for q in self.questions:
             if q.__name__ not in skip and (only is None or q.__name__ in only):
                 q()
+
+    def setup_files(self, files, startdir=None, writemode="overwrite"):
+        """
+        Setup a file structure. files is a list of three-tuples: 
+            (path, mode, contents) 
+
+        - If startdir is specified the path is deleted and re-created every time. 
+        - mode is "replace" or "once"
+            replace: Overwrite the file if it exists. 
+            once: Skip write/chmod if it exists. 
+        """
+
+        if startdir is not None:
+            subprocess.run(f"rm -rf {startdir}", shell=True)
+            subprocess.run(f"mkdir {startdir}", shell=True)
+        else:
+            startdir = pathlib.Path(".")
+
+        for path, mode, contents in files:
+            target = startdir / path
+            if writemode == 'overwrite' or not target.exists():
+                subprocess.run(f'mkdir -p {target.parent}', shell=True)
+                print("DEBUG: Writing:", target)
+                with open(target, 'w') as fh:
+                    fh.write(contents)
+                subprocess.run(f"chmod {mode} {target}", shell=True)
+
+
+    def check_files(self, files, startdir=pathlib.Path(".")):
+        """
+        Check the contents of files. files is the three-tuple from setup_files.         
+        """
+        for path, mode, contents in files:
+            with open(startdir / path) as fh:
+                assert contents == fh.read(), f"The contents of {path} don't match."
+            stat = os.stat(startdir / path)
+            rmode = oct(stat.st_mode & 0b111111111)[2:]
+            assert mode == rmode, f"The permissions on {path} don't match."
