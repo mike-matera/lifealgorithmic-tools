@@ -98,7 +98,8 @@ class LinuxTest:
         self.storeconfig()
 
     def storeconfig(self):
-        print("DEBUG: store: config:", self.config)
+        if self.debug:
+            print("DEBUG: store: config:", self.config)
         with open(self.configfile, 'wb') as cf:
             cf.write(self.box.encrypt(json.dumps(self.config).encode('utf-8')))
 
