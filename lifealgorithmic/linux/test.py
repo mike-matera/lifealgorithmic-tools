@@ -190,6 +190,54 @@ class LinuxTest:
         print(*stuff)
         print(Color.F_Default, end='')
 
+    def question2(self, points, setup=None, interactive=False, **decorator_kwargs):
+        def _decorator(func):
+            def _wrapper():
+
+                if interactive and self.config.get(func.__name__) is not None:
+                    self.score += points
+                    return
+
+                if setup is not None:
+                    setup()
+
+                print(Formatting.Bold, end='')
+                print('-' * 80)
+                print(func.__name__, " (", points, " points)\n", sep='')
+                print(Formatting.Reset, end='')
+                print(_wrapper.__doc__)
+
+                while True:
+                    try:
+                        rval = func(**decorator_kwargs)
+                        self.score += points
+                        self.config[func.__name__] = 1 
+                        self.print_success('** Correct **')
+                        self.input('[Enter to continue]')
+                        return rval
+                    except Exception as e:
+                        self.print_error('Error:', e)
+                        if self.debug:
+                            traceback.print_exc()
+
+                        got = self.input('Type "skip" to skip the question. Enter to test again: ').strip()
+                        if got == 'skip':
+                            print('Skipping the question.')
+                            return None
+
+            # Expose docstring to the wrapped function.
+            _wrapper.__doc__ = func.__doc__.format(**decorator_kwargs)
+            _wrapper.__name__ = func.__name__
+            self.questions.append(_wrapper)
+            if self.total > -1:
+                self.total += points
+
+            return _wrapper
+
+        return _decorator
+
+
+
     def question(self, points, setup=None, **decorator_kwargs):
         def _decorator(func):
             def _wrapper():
