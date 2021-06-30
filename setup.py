@@ -24,23 +24,14 @@ setuptools.setup(
 
     packages=[
         'lifealgorithmic', 
-        'cis15.tests', 
         'lifealgorithmic.linux',
         'rosters',
-        'cfge',
     ],
     
     scripts=[
         'lifealgorithmic/extract-notebooks', 
-        'cis15/test_subs.py', 
-        'cis15/projtest',
         'lifealgorithmic/armor', 
         'lifealgorithmic/decode-cfm',
-        'lifealgorithmic/notebook', 
-        'lifealgorithmic/aws-roster', 
-        'lifealgorithmic/aws-roster', 
-        'cis15/upload_results.py',
         'rosters/get-rosters',
     ],
-
 )
