@@ -13,10 +13,9 @@ setuptools.setup(
 
     install_requires=[
         'filetype', 
-        'selenium', 
+        'selenium',
         'pexpect', 
         'canvasapi', 
-        'python-Levenshtein', 
         'pyyaml', 
         'jupyter',
         'pynacl',
@@ -24,22 +23,14 @@ setuptools.setup(
 
     packages=[
         'lifealgorithmic', 
-        'cis15.tests', 
         'lifealgorithmic.linux',
         'rosters',
-        'cfge',
     ],
     
     scripts=[
-        'lifealgorithmic/extract-notebooks', 
-        'cis15/test_subs.py', 
-        'cis15/projtest',
         'lifealgorithmic/armor', 
-        'lifealgorithmic/decode-cfm',
-        'lifealgorithmic/notebook', 
-        'lifealgorithmic/aws-roster', 
-        'lifealgorithmic/aws-roster', 
-        'cis15/upload_results.py',
+        'lifealgorithmic/extract-notebooks', 
+        'lifealgorithmic/secrets.py',
         'rosters/get-rosters',
     ],
 
