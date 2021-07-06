@@ -33,5 +33,4 @@ setuptools.setup(
         'lifealgorithmic/secrets.py',
         'rosters/get-rosters',
     ],
-
 )
