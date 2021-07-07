@@ -172,7 +172,7 @@ class LinuxTest:
         print(*stuff)
         print(Color.F_Default, Formatting.Reset, sep='', end='')
 
-    def question(self, points, setup=None, interactive=False):
+    def question(self, points, setup=None, interactive=False, **dkwargs):
         def _decorator(func):
             def _wrapper(*args, **kwargs):
 
@@ -191,12 +191,12 @@ class LinuxTest:
                     setup()
 
                 if (func.__doc__ is not None):
-                    print(func.__doc__.format(*args, **kwargs))
+                    print(func.__doc__.format(**dkwargs))
 
                 try:
                     while True:
                         try:
-                            rval = func(*args, **kwargs)
+                            rval = func(**dkwargs)
                             self.score += points
                             self.config[func.__name__] = 1 
                             self.print_success('** Correct **')
