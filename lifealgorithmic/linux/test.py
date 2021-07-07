@@ -9,6 +9,8 @@ import subprocess
 import tempfile
 import pathlib
 import traceback
+import platform 
+import getpass 
 
 import lifealgorithmic.secrets
 
@@ -72,20 +74,22 @@ class Color:
 
 class LinuxTest:
 
-    def __init__(self, secret, testconfig=pathlib.Path('.tconfig')):
+    def __init__(self, secret, state_file=None, debug=False):
         self.score = 0
         self.total = 0
         self.secret = secret
-        self.debug = False
+        self.debug = debug
         self.questions = []
-        self.configfile = testconfig
+        self.configfile = state_file
         self.config = {}
-        self.loadconfig()
-
-    def __del__(self):
-        self.print_cfm()
+        if self.configfile is not None:
+            self.configfile = pathlib.Path(self.configfile)
+            self.loadconfig()
 
     def storeconfig(self):
+        self.config['user'] = getpass.getuser()
+        self.config['host'] = platform.node()
+        self.config['nodeid'] = self.get_nodehash()
         if self.debug:
             print("DEBUG: store: config:", self.config)
         lifealgorithmic.secrets.store_file(self.configfile, self.secret, self.config)
@@ -93,16 +97,19 @@ class LinuxTest:
     def loadconfig(self):
         if not self.configfile.exists():
             self.storeconfig()
-        self.config = lifealgorithmic.secrets.load_file(self.configfile, self.secret)
-        if self.debug:
-            print("DEBUG: load: config:", self.config)
+        try:
+            self.config = lifealgorithmic.secrets.load_file(self.configfile, self.secret)
+            if self.debug:
+                print("DEBUG: load: config:", self.config)
+            assert self.config['user'] == getpass.getuser()
+            assert self.config['host'] == platform.node()
+            assert self.config['nodeid'] == self.get_nodehash()
+        except Exception as e:
+            print("The state file has been tampered with.")
+            exit(-100)
 
-    def print_cfm(self):
-        print (Formatting.Bold, end='')
-        print('Your final score is', self.score, 'out of', self.total)
-        print('Your confirmation number is:', lifealgorithmic.secrets.generate_code({'score': self.score}, self.secret))
-        print('''Please enter your confirmation number into Canvas.\nYou can restart the test any time.\n\n''')
-        print (Formatting.Reset, end='')
+    def get_confirmation(self):
+        return lifealgorithmic.secrets.generate_code({'score': self.score}, self.secret)
 
     def get_nodehash(self):
         ipaddr = subprocess.check_output('ip addr', shell=True).decode('UTF-8')
@@ -156,31 +163,33 @@ class LinuxTest:
         return input(Color.F_LightYellow + prompt + Color.F_Default)
 
     def print_error(self, *stuff):
-        print(Color.F_LightRed, end='')
+        print(Formatting.Bold, Color.F_LightRed, sep='', end='')
         print(*stuff)
-        print(Color.F_Default, end='')
+        print(Color.F_Default, Formatting.Reset, sep='', end='')
 
     def print_success(self, *stuff):
-        print(Color.F_LightGreen, end='')
+        print(Formatting.Bold, Color.F_LightGreen, sep='', end='')
         print(*stuff)
-        print(Color.F_Default, end='')
+        print(Color.F_Default, Formatting.Reset, sep='', end='')
 
     def question(self, points, setup=None, interactive=False):
         def _decorator(func):
             def _wrapper(*args, **kwargs):
 
+                print(Formatting.Bold, end='')
+                print(func.__name__, " (", points, " points)", sep='', end="")
+
                 if interactive and self.config.get(func.__name__) is not None:
                     self.score += points
+                    self.print_success(" **Complete**")
+                    print(Formatting.Reset, end='')
                     return
+
+                print(Formatting.Reset, end='')
 
                 if setup is not None:
                     setup()
 
-                print(Formatting.Bold, end='')
-                print('-' * 80)
-                print(func.__name__, " (", points, " points)", sep='')
-                print('-' * 80)
-                print(Formatting.Reset, end='')
                 if (func.__doc__ is not None):
                     print(func.__doc__.format(*args, **kwargs))
 
@@ -190,7 +199,6 @@ class LinuxTest:
                             rval = func(*args, **kwargs)
                             self.score += points
                             self.config[func.__name__] = 1 
-                            self.storeconfig()
                             self.print_success('** Correct **')
                             return rval
                         except Exception as e:
@@ -200,15 +208,31 @@ class LinuxTest:
                             got = self.input('Try again? (Y/n)? ').strip().lower()
                             if got.startswith('n'):
                                 return None
+                        finally:
+                            self.storeconfig()
+
                 except (KeyboardInterrupt, EOFError) as e:
                     exit(-1)
 
+            self.questions.append(_wrapper)
             if self.total > -1:
                 self.total += points
 
             return _wrapper
 
         return _decorator
+
+    def run(self, skip=[], only=None):
+        """Run the test.
+
+            debug - Enable debugging. Reveals answers to interactive questions.
+            skip - A list of tests to skip.
+            only - A list of tests to run.
+
+        """
+        for q in self.questions:
+            if q.__name__ not in skip and (only is None or q.__name__ in only):
+                q()
 
     def setup_files(self, files, startdir=None, writemode="overwrite"):
         """
