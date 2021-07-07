@@ -19,6 +19,7 @@ setuptools.setup(
         'pyyaml', 
         'jupyter',
         'pynacl',
+        'psutil',
     ],
 
     packages=[
