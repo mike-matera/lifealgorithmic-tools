@@ -86,13 +86,12 @@ def main():
     """
 
     parser = argparse.ArgumentParser(description="Process confirmation numbers from stdin.")
-    parser.add_argument('command', choices=('confirm', 'file'), help='Run confirmation number or file operations.')
     parser.add_argument('-k', '--key', type=str, help="The key used for operations.")
     parser.add_argument('-f', '--file', type=str, help="The encrypted file to read.")
 
     args = parser.parse_args()
 
-    if args.command == 'confirm':
+    if args.file is None:
         while True:
             try:
                 print(validate_code(input('> '), args.key))
