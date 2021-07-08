@@ -8,7 +8,7 @@ import subprocess
 import pwd
 import os 
 
-from lifealgorithmic.secrets import secret
+from lifealgorithmic.secrets import vault
 
 class RandomPath:
     """
@@ -81,15 +81,15 @@ def check_files(self, files, startdir=pathlib.Path(".")):
 
 def make_flag():
     """
-    Create the flag file if it doesn't exist. Set the pathname and the secret file into the 
-    secrets store. 
+    Create the flag in the user's home directory if it doesn't exist. Set the pathname 
+    and the secret file into the secrets store. 
     
         Secrets:
             flag.path: <pathname>
             flag.secret: <secret file pathname>
     """
     global randpath
-    flag_file = pathlib.Path('flag').resolve()
+    flag_file = pathlib.Path(f'{os.environ["HOME"]}/flag').resolve()
     if not flag_file.exists():
         gecos = pwd.getpwuid(os.getuid())[4]
         secret_file = randpath.random_file()
@@ -103,8 +103,34 @@ def make_flag():
 """
         with open(flag_file, 'w') as fh:
             fh.write(flag_text)
-        secret.put('flag.path', str(flag_file))
-        secret.put('flag.secret', str(secret_file))
+        vault.put('flag.path', str(flag_file))
+        vault.put('flag.secret', str(secret_file))
+
+
+def random_big_file(shape=(100000, 12), sep=' ', end='\n'):
+    """
+    Create a large text file with dictionary words in the current directory.
+
+    Sets:
+        - bigfile.path: The path of the file. 
+    """    
+    words = []
+    with open('/usr/share/dict/words') as w:
+        for word in w:
+            words.append(word.strip())
+
+    bigfile = pathlib.Path('bigfile').resolve()
+    vault.put('bigfile.path', str(bigfile))
+
+    if not bigfile.exists():
+        with open(bigfile, 'w') as fh:
+            for _ in range(shape[0]):
+                for _ in range(shape[1]):
+                    fh.write(random.choice(words) + sep)
+                fh.write(end)
+    
+    return bigfile
+
 # 
 # For convenience 
 #

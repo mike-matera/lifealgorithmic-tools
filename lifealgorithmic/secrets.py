@@ -9,7 +9,8 @@ import platform
 import getpass 
 import json 
 import datetime
-import argparse 
+import argparse
+import subprocess 
 import nacl.secret
 import nacl.exceptions
 import platform 
@@ -17,7 +18,6 @@ import getpass
 import pathlib
 import os 
 import typing
-import csv 
 
 class Secret:
     """
@@ -31,7 +31,9 @@ class Secret:
         self.data['date'] = round(datetime.datetime.now(datetime.timezone.utc).timestamp())
         self.key = None
         self.file = None
-        if key is not None:
+        if key is None:
+            self.key = self.nodehash()
+        else:
             self.setkey(key)
         if file is not None:
             self.setfile(file)
@@ -101,24 +103,16 @@ class Secret:
 
     def nodehash(self):
         """
-        Get a unique number for this machine.
+        Get a unique hash for this machine. 
         """
+        interface = subprocess.run('ip route | grep default | cut -f5 -d" "', 
+            shell=True, stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
 
-        with open('/proc/net/route') as fh:
-            interface = None
-            data = csv.reader(fh, delimiter='\t')
-            for row in data:
-                try:
-                    if int(row[2], base=16) != 0:
-                        interface = row[0]
-                        break
-                except:
-                    pass
         with open(f'/sys/class/net/{interface}/address') as fh:
             mac = fh.read()
 
-        h = hashlib.blake2b(mac.encode('utf-8'), digest_size=8, key=self.key)
-        return int.from_bytes(h.digest(), byteorder='big')
+        return hashlib.blake2b(mac.encode('utf-8'), 
+            digest_size=nacl.secret.SecretBox.KEY_SIZE).digest()
 
 def main():
     """
@@ -132,7 +126,9 @@ def main():
 
     args = parser.parse_args()
 
-    vault.setkey(args.key)
+    if args.key is not None:
+        vault.setkey(args.key)
+
     if args.file is None:
         while True:
             try:
@@ -141,7 +137,7 @@ def main():
                 print("Error:", e)
     else:
         if args.file is None:
-            raise ValueError("You must specifiy a file.")
+            raise ValueError("You must specify a file.")
         vault.setfile(args.file)
         print(vault.data)
 

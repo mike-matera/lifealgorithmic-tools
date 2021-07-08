@@ -77,20 +77,9 @@ class LinuxTest:
         self.total = 0
         self.debug = debug
         self.questions = []
-    
-    def get_nodehash(self):
-        """
-        ipaddr = subprocess.check_output('ip addr', shell=True).decode('utf-8')
-        m = re.search('link/ether\s+(\S+)', ipaddr)
-        mac = m.group(1)
-        h = hashlib.md5()
-        h.update(vault.key)
-        h.update(mac.encode())
-        return int.from_bytes(h.digest(), byteorder='big')
-        """
         
     def tar_easteregg(self, tarfile):
-        egg = self.get_nodehash()
+        egg = vault.nodehash()
         url = 'https://github.com/python/cpython/archive/v2.7.16.tar.gz'
         hidepath = 'cpython-2.7.16/RISCOS/Modules'
         if not os.path.isfile(str(tarfile)):
@@ -104,7 +93,7 @@ class LinuxTest:
                                       stderr=subprocess.DEVNULL)
 
     def loopback_easteregg(self, fsfile):
-        egg = self.get_nodehash()
+        egg = vault.nodehash()
         if not os.path.isfile(str(fsfile)):
             try:
                 subprocess.check_call("dd if=/dev/zero of='" + str(fsfile) + "' bs=1M count=100", shell=True,
@@ -148,7 +137,7 @@ class LinuxTest:
                 print(Formatting.Bold, end='')
                 print(func.__name__, " (", points, " points)", sep='', end="")
 
-                if interactive and vault.get(func.__name__) is not None:
+                if interactive and vault.get(f"question.{func.__name__}") is not None:
                     self.score += points
                     self.print_success(" **Complete**")
                     print(Formatting.Reset, end='')
@@ -165,7 +154,7 @@ class LinuxTest:
                         try:
                             rval = func(**dkwargs)
                             self.score += points
-                            vault.put(func.__name__, 1) 
+                            vault.put(f"question.{func.__name__}", 1) 
                             self.print_success('** Correct **')
                             return rval
                         except Exception as e:
