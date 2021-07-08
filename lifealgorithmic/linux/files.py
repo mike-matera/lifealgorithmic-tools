@@ -16,18 +16,37 @@ class RandomPath:
     """
 
     DEFAULT_PATHS = [
-        '/etc',
-        '/bin',
-        '/dev',
-        '/usr/bin',
-        '/usr/sbin',
-        '/usr/share/doc',
+        ('/etc', '**/*'),
+        ('/bin', '**/*'),
+        ('/dev', '**/*'),
+        ('/usr/bin', '**/*'),
+        ('/usr/sbin', '**/*'),
+        ('/usr/share', '*/*'),
+        ('/sys', '*/*/*'),
+        ('/boot', '**/*'),
+        ('/lib', '*/*'),
     ]
 
-    def __init__(self, search=DEFAULT_PATHS):
+    def __init__(self, search=DEFAULT_PATHS, debug=False):
+        self.docs = None
+        self.search = search
+        self.debug = debug
+    
+    def _build(self):
         self.docs = []
-        for path in search:
-            self.docs += list(pathlib.Path(path).glob('**/*'))
+
+        def can_stat(f):
+            try:
+                f.stat()
+                return True
+            except:
+                return False 
+
+        for path in self.search:
+            inpath = list(filter(can_stat, pathlib.Path(path[0]).glob(path[1])))
+            if self.debug:
+                print(f"DEBUG: {path} yields {len(inpath)} files.")    
+            self.docs.append(inpath)
 
     def random_file(self):
         return self.find(lambda c: c.is_file() and not c.is_symlink())
@@ -37,7 +56,13 @@ class RandomPath:
 
     def find(self, filt):
         """Search the candidate files until a condition matches."""
-        return random.choice(list(filter(filt, self.docs)))
+        if self.docs is None:
+            self._build()
+        random.shuffle(self.docs)
+        for path in self.docs:
+            choices = list(filter(filt, path))
+            if len(choices) > 0:
+                return random.choice(choices)
 
 
 def setup_files(files, basedir=None, createmode="overwrite"):
