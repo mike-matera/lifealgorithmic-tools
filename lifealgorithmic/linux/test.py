@@ -9,10 +9,8 @@ import subprocess
 import tempfile
 import pathlib
 import traceback
-import platform 
-import getpass 
 
-import lifealgorithmic.secrets
+from lifealgorithmic.secrets import secret
 
 class Formatting:
     Bold = "\x1b[1m"
@@ -74,49 +72,18 @@ class Color:
 
 class LinuxTest:
 
-    def __init__(self, secret, state_file=None, debug=False):
+    def __init__(self, debug=False):
         self.score = 0
         self.total = 0
-        self.secret = secret
         self.debug = debug
         self.questions = []
-        self.configfile = state_file
-        self.config = {}
-        if self.configfile is not None:
-            self.configfile = pathlib.Path(self.configfile)
-            self.loadconfig()
-
-    def storeconfig(self):
-        self.config['user'] = getpass.getuser()
-        self.config['host'] = platform.node()
-        self.config['nodeid'] = self.get_nodehash()
-        if self.debug:
-            print("DEBUG: store: config:", self.config)
-        lifealgorithmic.secrets.store_file(self.configfile, self.secret, self.config)
-
-    def loadconfig(self):
-        if not self.configfile.exists():
-            self.storeconfig()
-        try:
-            self.config = lifealgorithmic.secrets.load_file(self.configfile, self.secret)
-            if self.debug:
-                print("DEBUG: load: config:", self.config)
-            assert self.config['user'] == getpass.getuser()
-            assert self.config['host'] == platform.node()
-            assert self.config['nodeid'] == self.get_nodehash()
-        except Exception as e:
-            print("The state file has been tampered with.")
-            exit(-100)
-
-    def get_confirmation(self):
-        return lifealgorithmic.secrets.generate_code({'score': self.score}, self.secret)
-
+    
     def get_nodehash(self):
         ipaddr = subprocess.check_output('ip addr', shell=True).decode('UTF-8')
         m = re.search('link/ether\s+(\S+)', ipaddr)
         mac = m.group(1)
         h = hashlib.md5()
-        h.update(self.secret.encode())
+        h.update(secret.encode())
         h.update(mac.encode())
         return int.from_bytes(h.digest(), byteorder='big')
 
@@ -172,14 +139,14 @@ class LinuxTest:
         print(*stuff)
         print(Color.F_Default, Formatting.Reset, sep='', end='')
 
-    def question(self, points, setup=None, interactive=False, **dkwargs):
+    def question(self, points, interactive=False, **dkwargs):
         def _decorator(func):
             def _wrapper(*args, **kwargs):
 
                 print(Formatting.Bold, end='')
                 print(func.__name__, " (", points, " points)", sep='', end="")
 
-                if interactive and self.config.get(func.__name__) is not None:
+                if interactive and secret.get(func.__name__) is not None:
                     self.score += points
                     self.print_success(" **Complete**")
                     print(Formatting.Reset, end='')
@@ -187,10 +154,8 @@ class LinuxTest:
 
                 print(Formatting.Reset, end='')
 
-                if setup is not None:
-                    setup()
-
                 if (func.__doc__ is not None):
+                    print()
                     print(func.__doc__.format(**dkwargs))
 
                 try:
@@ -198,7 +163,7 @@ class LinuxTest:
                         try:
                             rval = func(**dkwargs)
                             self.score += points
-                            self.config[func.__name__] = 1 
+                            secret.put(func.__name__, 1) 
                             self.print_success('** Correct **')
                             return rval
                         except Exception as e:
@@ -208,8 +173,6 @@ class LinuxTest:
                             got = self.input('Try again? (Y/n)? ').strip().lower()
                             if got.startswith('n'):
                                 return None
-                        finally:
-                            self.storeconfig()
 
                 except (KeyboardInterrupt, EOFError) as e:
                     exit(-1)
@@ -234,40 +197,5 @@ class LinuxTest:
             if q.__name__ not in skip and (only is None or q.__name__ in only):
                 q()
 
-    def setup_files(self, files, startdir=None, writemode="overwrite"):
-        """
-        Setup a file structure. files is a list of three-tuples: 
-            (path, mode, contents) 
 
-        - If startdir is specified the path is deleted and re-created every time. 
-        - mode is "replace" or "once"
-            replace: Overwrite the file if it exists. 
-            once: Skip write/chmod if it exists. 
-        """
-
-        if startdir is not None:
-            subprocess.run(f"rm -rf {startdir}", shell=True)
-            subprocess.run(f"mkdir {startdir}", shell=True)
-        else:
-            startdir = pathlib.Path(".")
-
-        for path, mode, contents in files:
-            target = startdir / path
-            if writemode == 'overwrite' or not target.exists():
-                subprocess.run(f'mkdir -p {target.parent}', shell=True)
-                print("DEBUG: Writing:", target)
-                with open(target, 'w') as fh:
-                    fh.write(contents)
-                subprocess.run(f"chmod {mode} {target}", shell=True)
-
-
-    def check_files(self, files, startdir=pathlib.Path(".")):
-        """
-        Check the contents of files. files is the three-tuple from setup_files.         
-        """
-        for path, mode, contents in files:
-            with open(startdir / path) as fh:
-                assert contents == fh.read(), f"The contents of {path} don't match."
-            stat = os.stat(startdir / path)
-            rmode = oct(stat.st_mode & 0b111111111)[2:]
-            assert mode == rmode, f"The permissions on {path} don't match."
+test = LinuxTest()
