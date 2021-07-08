@@ -18,6 +18,7 @@ import getpass
 import pathlib
 import os 
 import typing
+import sys 
 
 class Secret:
     """
@@ -28,6 +29,7 @@ class Secret:
         self.data = {}
         self.data['user'] = getpass.getuser()
         self.data['host'] = platform.node()
+        self.data['cmd'] = sys.argv[0]
         self.data['date'] = round(datetime.datetime.now(datetime.timezone.utc).timestamp())
         self.key = None
         self.file = None
@@ -63,7 +65,8 @@ class Secret:
                     if validate:
                         assert self.data['user'] == getpass.getuser()
                         assert self.data['host'] == platform.node()
-                except (AssertionError, nacl.exceptions.CryptoError) as e:
+                        assert self.data['cmd'] == sys.argv[0]
+                except (KeyError, AssertionError, nacl.exceptions.CryptoError) as e:
                     # Nuke the bad file.                    
                     self.store()
 
@@ -80,6 +83,7 @@ class Secret:
         """
         data['user'] = getpass.getuser()
         data['host'] = platform.node()
+        data['cmd'] = sys.argv[0]
         data['date'] = round(datetime.datetime.now(datetime.timezone.utc).timestamp())
         raw = json.dumps(data, separators=(',', ':')).encode('utf-8')
         h = hashlib.blake2b(raw, digest_size=8, key=self.key)
