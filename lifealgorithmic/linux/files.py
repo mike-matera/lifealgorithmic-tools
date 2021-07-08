@@ -39,45 +39,65 @@ class RandomPath:
         """Search the candidate files until a condition matches."""
         return random.choice(list(filter(filt, self.docs)))
 
-def setup_files(files, basedir=None, mode="overwrite"):
-    """
-    Setup a file structure. files is a sequence of three-tuples: 
-        (path, mode, contents) 
 
-    - If startdir is specified the path is deleted and re-created every time.
+def setup_files(files, basedir=None, createmode="overwrite"):
+    """
+    Setup a file structure. files is a sequence of four-tuples: 
+        (path, (user, group), mode, contents) 
+
+        (user, group) can be None, individual user and group can also be None
+        mode can be None 
+        contents can be None 
+
+    - If basedir is specified the path is deleted and re-created every time.
         this basically implies overwrite. 
 
-    - mode is "overwrite" or "once"
+    - createmode is "overwrite" or "once"
         overwite: Overwrite the file if it exists. 
         once: Skip write and chmod if it exists. 
     """
 
     if basedir is not None:
+        basedir = pathlib.Path(basedir)
         subprocess.run(f"rm -rf {basedir}", shell=True)
         subprocess.run(f"mkdir -p {basedir}", shell=True)
     else:
         basedir = pathlib.Path(".")
 
-    for path, mode, contents in files:
+    for path, ownership, mode, contents in files:
         target = basedir / path
-        if mode == 'overwrite' or not target.exists():
+        if createmode == 'overwrite' or not target.exists():
             subprocess.run(f'mkdir -p {target.parent}', shell=True)
             with open(target, 'w') as fh:
                 fh.write(contents)
-            subprocess.run(f"chmod {mode} {target}", shell=True)
+            if mode is not None:
+                subprocess.run(f"chmod {mode} {target}", shell=True)
+            if ownership is not None:
+                if ownership[0] is not None:
+                    subprocess.run(f"chown {ownership[0]} {target}", shell=True)
+                if ownership[1] is not None:
+                    subprocess.run(f"chgrp {ownership[1]} {target}", shell=True)
 
-
-def check_files(self, files, startdir=pathlib.Path(".")):
+def check_files(files, basedir=pathlib.Path(".")):
     """
-    Check the contents of files. files is the three-tuple from setup_files.         
+    Check the contents of files. files is the four-tuple from setup_files.         
     """
-    for path, mode, contents in files:
-        with open(startdir / path) as fh:
-            assert contents == fh.read(), f"The contents of {path} don't match."
-        stat = os.stat(startdir / path)
-        rmode = oct(stat.st_mode & 0b111111111)[2:]
-        assert mode == rmode, f"The permissions on {path} don't match."
-
+    basedir = pathlib.Path(basedir)
+    for path, ownership, mode, contents in files:
+        path = basedir / path
+        assert path.exists(), f"""The file {path} does not exist."""
+        stat = path.stat()
+        if contents is not None:
+            with open(path) as fh:
+                assert contents == fh.read(), f"The contents of {path} don't match."
+        if mode is not None:
+            rmode = stat.st_mode & 0b111111111
+            assert mode == rmode, f"The permissions on {path} don't match."
+        if ownership is not None:
+            if ownership[0] is not None:
+                assert stat.st_uid == ownership[0], f"""The owner of {path} doesn't match."""
+            if ownership[1] is not None:
+                assert stat.st_gid == ownership[1], f"""The group of {path} doesn't match."""
 
 def make_flag():
     """
