@@ -10,7 +10,7 @@ import tempfile
 import pathlib
 import traceback
 
-from lifealgorithmic.secrets import secret
+from lifealgorithmic.secrets import vault
 
 class Formatting:
     Bold = "\x1b[1m"
@@ -79,14 +79,16 @@ class LinuxTest:
         self.questions = []
     
     def get_nodehash(self):
-        ipaddr = subprocess.check_output('ip addr', shell=True).decode('UTF-8')
+        """
+        ipaddr = subprocess.check_output('ip addr', shell=True).decode('utf-8')
         m = re.search('link/ether\s+(\S+)', ipaddr)
         mac = m.group(1)
         h = hashlib.md5()
-        h.update(secret.encode())
+        h.update(vault.key)
         h.update(mac.encode())
         return int.from_bytes(h.digest(), byteorder='big')
-
+        """
+        
     def tar_easteregg(self, tarfile):
         egg = self.get_nodehash()
         url = 'https://github.com/python/cpython/archive/v2.7.16.tar.gz'
@@ -146,7 +148,7 @@ class LinuxTest:
                 print(Formatting.Bold, end='')
                 print(func.__name__, " (", points, " points)", sep='', end="")
 
-                if interactive and secret.get(func.__name__) is not None:
+                if interactive and vault.get(func.__name__) is not None:
                     self.score += points
                     self.print_success(" **Complete**")
                     print(Formatting.Reset, end='')
@@ -163,7 +165,7 @@ class LinuxTest:
                         try:
                             rval = func(**dkwargs)
                             self.score += points
-                            secret.put(func.__name__, 1) 
+                            vault.put(func.__name__, 1) 
                             self.print_success('** Correct **')
                             return rval
                         except Exception as e:

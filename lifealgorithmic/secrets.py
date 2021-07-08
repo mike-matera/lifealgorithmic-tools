@@ -17,6 +17,7 @@ import getpass
 import pathlib
 import os 
 import typing
+import csv 
 
 class Secret:
     """
@@ -98,12 +99,32 @@ class Secret:
         data['date'] = datetime.datetime.fromtimestamp(data['date']).strftime("%a %b %d, %Y %I:%M %p")
         return data
 
+    def nodehash(self):
+        """
+        Get a unique number for this machine.
+        """
+
+        with open('/proc/net/route') as fh:
+            interface = None
+            data = csv.reader(fh, delimiter='\t')
+            for row in data:
+                try:
+                    if int(row[2], base=16) != 0:
+                        interface = row[0]
+                        break
+                except:
+                    pass
+        with open(f'/sys/class/net/{interface}/address') as fh:
+            mac = fh.read()
+
+        h = hashlib.blake2b(mac.encode('utf-8'), digest_size=8, key=self.key)
+        return int.from_bytes(h.digest(), byteorder='big')
 
 def main():
     """
     Decode confirmation numbers from stdin.
     """
-    global secret 
+    global vault
 
     parser = argparse.ArgumentParser(description="Process confirmation numbers from stdin.")
     parser.add_argument('-k', '--key', type=str, help="The key used for operations.")
@@ -111,23 +132,23 @@ def main():
 
     args = parser.parse_args()
 
-    secret.setkey(args.key)
+    vault.setkey(args.key)
     if args.file is None:
         while True:
             try:
-                print(secret.validate(input('> ')))
+                print(vault.validate(input('> ')))
             except Exception as e:
                 print("Error:", e)
     else:
         if args.file is None:
             raise ValueError("You must specifiy a file.")
-        secret.setfile(args.file)
-        print(secret.data)
+        vault.setfile(args.file)
+        print(vault.data)
 
 #
 # Singleton 
 # 
-secret = Secret()
+vault = Secret()
 
 if __name__ == '__main__':
     main() 
