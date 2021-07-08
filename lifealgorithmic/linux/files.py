@@ -167,12 +167,11 @@ def random_big_file(shape=(100000, 12), sep=' ', end='\n'):
     bigfile = pathlib.Path('bigfile').resolve()
     vault.put('bigfile.path', str(bigfile))
 
-    if not bigfile.exists():
-        with open(bigfile, 'w') as fh:
-            for _ in range(shape[0]):
-                for _ in range(shape[1]):
-                    fh.write(random.choice(words) + sep)
-                fh.write(end)
+    with open(bigfile, 'w') as fh:
+        for _ in range(shape[0]):
+            for _ in range(shape[1]):
+                fh.write(random.choice(words) + sep)
+            fh.write(end)
     
     return bigfile
 
