@@ -152,7 +152,7 @@ def make_flag():
         vault.put('flag.secret', str(secret_file))
 
 
-def random_big_file(shape=(100000, 12), sep=' ', end='\n'):
+def random_big_file(name='bigfile', shape=(100000, 12), sep=' ', end='\n'):
     """
     Create a large text file with dictionary words in the current directory.
 
@@ -164,7 +164,7 @@ def random_big_file(shape=(100000, 12), sep=' ', end='\n'):
         for word in w:
             words.append(word.strip())
 
-    bigfile = pathlib.Path('bigfile').resolve()
+    bigfile = pathlib.Path(name).resolve()
     vault.put('bigfile.path', str(bigfile))
 
     with open(bigfile, 'w') as fh:
@@ -174,6 +174,21 @@ def random_big_file(shape=(100000, 12), sep=' ', end='\n'):
             fh.write(end)
     
     return bigfile
+
+def random_big_dir(count=1000):
+    """
+    Create a directory with a large number of randomly named files. 
+
+    This function does not act on the filesystem. It only generates a 
+    structure suitable for passing to `setup_files`. 
+    """
+
+    words = []
+    with open('/usr/share/dict/words') as w:
+        for word in w:
+            words.append(word.strip())
+
+    return list(map(lambda x: [x, None, None, x], random.sample(words, count)))
 
 # 
 # For convenience 
