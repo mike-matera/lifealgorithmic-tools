@@ -20,6 +20,10 @@ import os
 import typing
 import sys 
 
+# Python 3.6 does not initialize sys.argv in embedded mode. 
+if sys.version_info[0:2] == (3,6) and not hasattr(sys, 'argv'):
+    sys.argv = [str(pathlib.Path(sys.executable).name)]
+
 class Secret:
     """
     Access to secret codes and data files.
