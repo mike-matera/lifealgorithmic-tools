@@ -65,10 +65,6 @@ def fetch(username, password):
 
             logging.info(f'Working on {course_fullname}')
         
-            # Let the table load. Click the waitlist. 
-            time.sleep(0.5)
-            waitlist_button = driver.find_element_by_xpath('//a[@href="#waitlist-content-nav"]')
-            waitlist_button.click()
             time.sleep(0.5)
             waitlist_button = driver.find_element_by_xpath('//a[@href="#roster-content-nav"]')
             waitlist_button.click()
@@ -98,22 +94,7 @@ def fetch(username, password):
                 else:
                     logging.info(f'Failed to process: {row_data}')
 
-            # Faster wait for the waitlist.
-            waitlist_button = driver.find_element_by_xpath('//a[@href="#waitlist-content-nav"]')
-            waitlist_button.click()
-            driver.implicitly_wait(2)
-            roster_rows = driver.find_elements_by_xpath('//table[@id="faculty-waitlist-table"]//tr')
-            for row in roster_rows[1:]:
-                row_data = row.text.split('\n')
-                if len(row_data) == 6:
-                    course_data[course_id]['roster'].append({
-                        'fullname': row_data[0],
-                        'id': row_data[1],
-                        'email': row_data[5],
-                        'status': 'wait',
-                    })
-                    logging.info(f"Wait list: {course_data[course_id]['roster'][-1]}")
-
+            
     finally:
         driver.close()
     
