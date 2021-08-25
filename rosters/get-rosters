@@ -8,13 +8,18 @@ import pathlib
 
 from rosters import fetcher 
 from rosters import formatters 
+from rosters import canvas 
 
 
 def main():
-	if len(sys.argv) == 1:     
-		username = input('User ID: ').strip()
-		password = getpass.getpass('Password: ').strip()
-		rosters = fetcher.fetch(username, password)
+	if len(sys.argv) == 1:
+		if canvas.canvas_enabled(): 
+			rosters = canvas.fetch()
+		else: 
+			username = input('User ID: ').strip()
+			password = getpass.getpass('Password: ').strip()
+			rosters = fetcher.fetch(username, password)
+
 		print("Writing rosters.json")
 		with open('rosters.json', 'w') as f:
 			f.write(json.dumps(rosters))
