@@ -23,6 +23,7 @@ else:
 
 
 def canvas_enabled():
+    return False
     return canvas != None
 
 def fetch():
