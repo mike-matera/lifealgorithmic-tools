@@ -1,3 +1,5 @@
+#! /usr/bin/env python3 
+
 """
 Library for generating and managing copy-and-paste confirmation messages.
 """
