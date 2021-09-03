@@ -130,16 +130,14 @@ def main():
     """
     Decode confirmation numbers from stdin.
     """
-    global vault
 
     parser = argparse.ArgumentParser(description="Process confirmation numbers from stdin.")
-    parser.add_argument('-k', '--key', type=str, help="The key used for operations.")
+    parser.add_argument('-k', '--key', type=str, required=True, help="The key used for operations.")
     parser.add_argument('-f', '--file', type=str, help="The encrypted file to read.")
 
     args = parser.parse_args()
 
-    if args.key is not None:
-        vault.setkey(args.key)
+    vault = Secret(key=args.key)
 
     if args.file is None:
         while True:
@@ -150,8 +148,8 @@ def main():
     else:
         if args.file is None:
             raise ValueError("You must specify a file.")
-        vault.setfile(args.file)
-        print(vault.data)
+        with open(args.file, 'rb') as fh:
+            print(json.loads(self.box.decrypt(fh.read()).decode('utf-8')))
 
 #
 # Singleton 
