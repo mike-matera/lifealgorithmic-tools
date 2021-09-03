@@ -50,10 +50,10 @@ class Secret:
 
     def setkey(self, key :str):
         self.key = hashlib.blake2b(key.encode('utf-8'), digest_size=nacl.secret.SecretBox.KEY_SIZE).digest()
+        self.box = nacl.secret.SecretBox(self.key)
 
     def setfile(self, file :str):
         self.file = pathlib.Path(file)
-        self.box = nacl.secret.SecretBox(self.key)
         self.load()
 
     def store(self):
