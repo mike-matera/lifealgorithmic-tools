@@ -149,7 +149,7 @@ def main():
         if args.file is None:
             raise ValueError("You must specify a file.")
         with open(args.file, 'rb') as fh:
-            print(json.loads(self.box.decrypt(fh.read()).decode('utf-8')))
+            print(json.loads(vault.box.decrypt(fh.read()).decode('utf-8')))
 
 #
 # Singleton 
