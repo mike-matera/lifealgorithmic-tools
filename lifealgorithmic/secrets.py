@@ -21,6 +21,8 @@ import pathlib
 import os 
 import typing
 import sys 
+import getpass
+
 
 # Python 3.6 does not initialize sys.argv in embedded mode. 
 if sys.version_info[0:2] == (3,6) and not hasattr(sys, 'argv'):
@@ -139,12 +141,26 @@ def main():
 
     vault = Secret(key=args.key)
 
+    Bold = "\x1b[1m"
+    Reset = "\x1b[0m"
+    F_LightGreen = "\x1b[92m"
+    F_Default = "\x1b[39m"
+    B_Default = "\x1b[49m"
+    B_Black = "\x1b[40m"
+
     if args.file is None:
         while True:
-            try:
-                print(vault.validate(input('> ')))
-            except Exception as e:
-                print("Error:", e)
+            got = input('> ')
+            for word in got.split():
+                try:
+                    data = vault.validate(word)
+                    print("\n")
+                    print(Bold, F_LightGreen, B_Black, sep='', end='')
+                    print(data)
+                    print(B_Default, F_Default, Reset, sep='', end='')                    
+                    print("\n")
+                except Exception as e:
+                    pass
     else:
         if args.file is None:
             raise ValueError("You must specify a file.")
