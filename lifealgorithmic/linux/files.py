@@ -135,7 +135,7 @@ def make_flag():
     """
     global randpath
     flag_file = pathlib.Path(f'{os.environ["HOME"]}/flag').resolve()
-    if not flag_file.exists():
+    if vault.get('flag.path') is None or vault.get('flag.secret') is None:
         gecos = pwd.getpwuid(os.getuid())[4]
         secret_file = randpath.random_file()
         flag_text = f"""
