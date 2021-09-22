@@ -49,10 +49,10 @@ class RandomPath:
             self.docs.append(inpath)
 
     def random_file(self):
-        return self.find(lambda c: c.is_file() and not c.is_symlink())
+        return self.find(lambda c: c.is_file() and not c.is_symlink()).resolve()
 
     def random_dir(self):
-        return self.find(lambda c: c.is_dir() and not c.is_symlink())
+        return self.find(lambda c: c.is_dir() and not c.is_symlink()).resolve()
 
     def find(self, filt):
         """Search the candidate files until a condition matches."""
