@@ -107,7 +107,7 @@ class Secret:
         exception if there was a validation error.     
         """
 
-        raw = base64.b64decode(cfm)
+        raw = base64.b64decode(cfm, validate=True)
         assert len(raw) > 8, '**GARBAGE**'
         ah = hashlib.blake2b(raw[8:], digest_size=8, key=self.key).digest()
         assert ah == raw[0:8], '**TAMPER**'
@@ -144,6 +144,7 @@ def main():
     Bold = "\x1b[1m"
     Reset = "\x1b[0m"
     F_LightGreen = "\x1b[92m"
+    F_LightRed = "\x1b[91m"
     F_Default = "\x1b[39m"
     B_Default = "\x1b[49m"
     B_Black = "\x1b[40m"
@@ -159,6 +160,13 @@ def main():
                     print(data)
                     print(B_Default, F_Default, Reset, sep='', end='')                    
                     print("\n")
+                except AssertionError as e:
+                    if str(e) == '**TAMPER**':
+                        print("\n")
+                        print(Bold, F_LightRed, B_Black, sep='', end='')
+                        print('**TAMER EVIDENT**')
+                        print(B_Default, F_Default, Reset, sep='', end='')                    
+                        print("\n")
                 except Exception as e:
                     pass
     else:
