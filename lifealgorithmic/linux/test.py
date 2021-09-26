@@ -2,9 +2,7 @@
 Module with helpers for Linux tests.
 """
 
-import re
 import os
-import hashlib
 import subprocess
 import tempfile
 import pathlib
@@ -70,6 +68,13 @@ class Color:
     B_White = "\x1b[107m"
 
 
+def ask(prompt=None):
+    """Prompt for input with pretty colors."""
+    if prompt is None:
+        prompt = "answer: "
+    return input(Color.F_LightYellow + prompt + Color.F_Default)
+
+
 class LinuxTest:
 
     def __init__(self, debug=False):
@@ -115,11 +120,6 @@ class LinuxTest:
                 os.remove(str(fsfile))
                 raise e
 
-    def input(self, prompt=None):
-        if prompt is None:
-            prompt = "answer: "
-        return input(Color.F_LightYellow + prompt + Color.F_Default)
-
     def print_error(self, *stuff):
         print(Formatting.Bold, Color.F_LightRed, sep='', end='')
         print(*stuff)
@@ -130,63 +130,44 @@ class LinuxTest:
         print(*stuff)
         print(Color.F_Default, Formatting.Reset, sep='', end='')
 
-    def question(self, points, interactive=False, **dkwargs):
-        def _decorator(func):
-            def _wrapper(*args, **kwargs):
-
-                print(Formatting.Bold, end='')
-                print(func.__name__, " (", points, " points)", sep='', end="")
-
-                if interactive and vault.get(f"question.{func.__name__}") is not None:
-                    self.score += points
-                    self.print_success(" **Complete**")
-                    print(Formatting.Reset, end='')
-                    return
-
-                print(Formatting.Reset, end='')
-
-                if (func.__doc__ is not None):
-                    print()
-                    print(func.__doc__.format(**dkwargs))
-
-                try:
-                    while True:
-                        try:
-                            rval = func(**dkwargs)
-                            self.score += points
-                            vault.put(f"question.{func.__name__}", 1) 
-                            self.print_success('** Correct **')
-                            return rval
-                        except Exception as e:
-                            self.print_error('Error:', e)
-                            if self.debug:
-                                traceback.print_exc()
-                            got = self.input('Try again? (Y/n)? ').strip().lower()
-                            if got.startswith('n'):
-                                return None
-
-                except (KeyboardInterrupt, EOFError) as e:
-                    exit(-1)
-
-            self.questions.append(_wrapper)
+    def question(self, func):
+        def _wrapper(points, *args, **kwargs):
             if self.total > -1:
                 self.total += points
 
-            return _wrapper
+            if vault.get(f"question.{func.__name__}") is not None:
+                self.score += points
+                print(Formatting.Bold, end='')
+                print(func.__name__, " (", points, " points)", sep='', end="")
+                self.print_success(" **Complete**")
+                print(Formatting.Reset, end='')
+                return
 
-        return _decorator
+            try:
+                while True:
+                    try:
+                        print(Formatting.Bold, end='')
+                        print(func.__name__, " (", points, " points)", sep='', end="")
+                        print(Formatting.Reset, end='')
+                        if (func.__doc__ is not None):
+                            print("\n" + func.__doc__.format(**kwargs))
+                        rval = func(**kwargs)
+                        self.score += points
+                        vault.put(f"question.{func.__name__}", 1) 
+                        self.print_success('** Correct **')
+                        return rval
+                    except Exception as e:
+                        self.print_error('Error:', e)
+                        if self.debug:
+                            traceback.print_exc()
+                        got = ask('Try again? (Y/n)? ').strip().lower()
+                        if got.startswith('n'):
+                            return None
 
-    def run(self, skip=[], only=None):
-        """Run the test.
+            except (KeyboardInterrupt, EOFError) as e:
+                exit(-1)
 
-            debug - Enable debugging. Reveals answers to interactive questions.
-            skip - A list of tests to skip.
-            only - A list of tests to run.
-
-        """
-        for q in self.questions:
-            if q.__name__ not in skip and (only is None or q.__name__ in only):
-                q()
+        return _wrapper
 
 
 test = LinuxTest()
