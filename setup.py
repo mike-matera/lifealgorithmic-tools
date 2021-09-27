@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="lifealgorithmic",
-    version="0.0.3",
+    version="0.1.0",
     author="Mike Matera",
     author_email="matera@lifealgorithmic.com",
     description="My Course Tools",
