@@ -8,6 +8,7 @@ import subprocess
 import pwd
 import os 
 
+from lifealgorithmic.linux.words import randword
 from lifealgorithmic.secrets import vault
 
 class RandomPath:
@@ -159,18 +160,13 @@ def random_big_file(name='bigfile', shape=(100000, 12), sep=' ', end='\n'):
     Sets:
         - bigfile.path: The path of the file. 
     """    
-    words = []
-    with open('/usr/share/dict/words') as w:
-        for word in w:
-            words.append(word.strip())
-
     bigfile = pathlib.Path(name).resolve()
     vault.put('bigfile.path', str(bigfile))
 
     with open(bigfile, 'w') as fh:
         for _ in range(shape[0]):
             for _ in range(shape[1]):
-                fh.write(random.choice(words) + sep)
+                fh.write(random.choice(randword.choice()) + sep)
             fh.write(end)
     
     return bigfile
@@ -183,12 +179,7 @@ def random_big_dir(count=1000):
     structure suitable for passing to `setup_files`. 
     """
 
-    words = []
-    with open('/usr/share/dict/words') as w:
-        for word in w:
-            words.append(word.strip())
-
-    return list(map(lambda x: [x, None, None, x], random.sample(words, count)))
+    return list(map(lambda x: [x, None, None, x], random.sample(randword.choice(), count)))
 
 # 
 # For convenience 
