@@ -179,7 +179,7 @@ def random_big_dir(count=1000):
     structure suitable for passing to `setup_files`. 
     """
 
-    return list(map(lambda x: [x, None, None, x], random.sample(randword.choice(), count)))
+    return list(map(lambda x: [x, None, None, x], random.sample(randword.words, count)))
 
 # 
 # For convenience 
