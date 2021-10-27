@@ -166,7 +166,7 @@ def random_big_file(name='bigfile', shape=(100000, 12), sep=' ', end='\n'):
     with open(bigfile, 'w') as fh:
         for _ in range(shape[0]):
             for _ in range(shape[1]):
-                fh.write(random.choice(randword.choice()) + sep)
+                fh.write(randword.choice() + sep)
             fh.write(end)
     
     return bigfile
