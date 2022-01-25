@@ -37,7 +37,12 @@ def main():
 	section_map = {}
 	for section_key in rosters: 
 		course, term = section_key.lower().split(':')
-		department, number, section = course.split('-')
+		courseparts = course.split('-')
+		if len(courseparts) == 2:
+			department, number = courseparts
+			section = '1'
+		else:
+			department, number, section = courseparts
 		term = term.replace(' ', '-')
 		key = f'{term}/{department}-{number}'
 		if key not in section_map:
