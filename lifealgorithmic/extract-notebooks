@@ -38,7 +38,7 @@ async def main():
 
     outfile = Path(args.output[0])
 
-    nbconvert_flags = "--to html"
+    nbconvert_flags = "--to html "
     if args.execute:
         nbconvert_flags += "--execute --allow-errors --ExecutePreprocessor.interrupt_on_timeout=True --ExecutePreprocessor.kernel_name=python3 --ExecutePreprocessor.timeout=5"
 
