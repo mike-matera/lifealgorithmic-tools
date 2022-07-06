@@ -29,7 +29,6 @@ setuptools.setup(
     ],
     
     scripts=[
-        'lifealgorithmic/armor', 
         'lifealgorithmic/extract-notebooks', 
         'lifealgorithmic/secrets.py',
         'rosters/get-rosters',
